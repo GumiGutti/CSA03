@@ -1,14 +1,3 @@
-// incl core0
-// incl core1
-
-// void setup() {
-// core0 setup
-// core1 setup
-// }
-
-// void loop() {
-// üres
-// }
 #include "Arduino.h"
 #include <HardwareSerial.h>
 #include "cansat03.h"
@@ -18,8 +7,7 @@ HardwareSerial gps(2);   // use UART2
 #include "core0.h"
 #include "core1.h"
 
-
-void setup(void) {
+void setup() {
 
   s.begin(115200);
   s.println();
@@ -28,8 +16,8 @@ void setup(void) {
   core0setup();
   core1setup();
 
-};
+}
 
-void loop(void){
+void loop(){
   // empty on purpose
-};
+}
