@@ -1,7 +1,7 @@
 // mutex struktúra
 // pin def
 #include <Arduino_FreeRTOS.h>
-#include "smphr.h"
+#include "semphr.h"
 
 SemaphoreHandle_t mutex;
 mutex = xSemaphoreCreateMutex();
