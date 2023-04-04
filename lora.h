@@ -1,3 +1,4 @@
+// asd
 // globálok
 // bufferek
 
