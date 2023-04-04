@@ -1,0 +1,4 @@
+globálok
+bufferek
+
+segédfüggvények
