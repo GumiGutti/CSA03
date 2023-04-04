@@ -1,4 +1,4 @@
-globálok
-bufferek
+// globálok
+// bufferek
 
-segédfüggvények
+// segédfüggvények
