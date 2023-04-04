@@ -1,5 +1,10 @@
 // mutex struktúra
 // pin def
+#include <Arduino_FreeRTOS.h>
+#include "smphr.h"
+
+SemaphoreHandle_t mutex;
+mutex = xSemaphoreCreateMutex();
 
 
 // TO általában: TimeOut
@@ -19,9 +24,9 @@ typedef struct statusfield_t {
   bool motorOK : 1;
   bool lightOK : 1;
   bool missionPhase : 3;
-}
+};
 
-statusField_t status;
+statusfield_t status;
 
 #define loraRst 0    // OUTPUT ONLY!
 #define GPIO01 1     // N/A
@@ -59,7 +64,10 @@ statusField_t status;
 #define mot1CCW 33   // generic
 #define GPIO34 34    // INPUT ONLY!
 #define GPIO35 35    // INPUT ONLY!
-#define GPIO36 36    // INPUT ONLY!
+#define INTERRUPT_PIN 36    // INPUT ONLY! - MPU6500 interrupt
 #define mot1SW 37    // N/A
 #define GPIO38 38    // N/A
 #define photoRes 39  // INPUT ONLY!
+
+#define ICACHE_RAM_ATTR
+#define SEALEVELPRESSURE_HPA (1013.25)
