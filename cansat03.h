@@ -1,10 +1,10 @@
 // mutex struktúra
 // pin def
-#include <Arduino_FreeRTOS.h>
-#include "semphr.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 
-SemaphoreHandle_t mutex;
-mutex = xSemaphoreCreateMutex();
+SemaphoreHandle_t xMutex;
 
 
 // TO általában: TimeOut
