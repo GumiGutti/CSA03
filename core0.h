@@ -26,17 +26,25 @@ TaskHandle_t hCore0task;
 // #include <bme280.h>
 // #include <Adafruit_INA219.h>
 
-TwoWire twi(0);
-// #define MPU6500_ADDR 0x68
-// SPIClass hspi(HSPI);
-// Adafruit_ADXL375 accel = Adafruit_ADXL375(accCS, &hspi, 12345);
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include "Wire.h"
+#endif
 
 MPU6050 mpu;
 MPU6050 accelgyro;
 Adafruit_BME280 bme;
 
+
+//TwoWire twi(0);
+
+
+// SPIClass hspi(HSPI);
+// Adafruit_ADXL375 accel = Adafruit_ADXL375(accCS, &hspi, 12345);
+
+
+
 bool dmpReady = false;   // set true if DMP init was successful
-uint8_t mpuIntStatus;    // holds actual interrupt status byte from MPU
+//uint8_t mpuIntStatus;    // holds actual interrupt status byte from MPU
 uint8_t devStatus;       // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;     // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;      // count of all bytes currently in FIFO
@@ -50,14 +58,14 @@ VectorFloat gravity;
 float ypr[3];
 
 
-volatile bool mpuInterrupt = false;  // indicates whether MPU interrupt pin has gone high
+//volatile bool mpuInterrupt = false;  // indicates whether MPU interrupt pin has gone high
 
 uint32_t tImuTrigger = 0;
 uint32_t tImuDelay = 50;  // milliseconds = 200 Hz
 
-void ICACHE_RAM_ATTR dmpDataReady() {
-  mpuInterrupt = true;
-}
+//void ICACHE_RAM_ATTR dmpDataReady() {
+  //mpuInterrupt = true;
+//}
 
 enum taskState { sRun,
                  sError,
@@ -70,7 +78,7 @@ void core0task(void* parameter);
 
 void setupBME() {
   unsigned status;
-  status = bme.begin(0x76, &twi); 
+  //status = bme.begin(0x76, &twi); 
   if (!status) {
     Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
     Serial.print("SensorID was: 0x");
@@ -89,21 +97,28 @@ void setupBME() {
 }
 
 void setupIMU() {
+  #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+      Wire.begin(21, 22);
+      //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+  #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+      Fastwire::setup(400, true);
+  #endif
   mpu.initialize();
   accelgyro.initialize();
-  mpu.setFullScaleGyroRange(3);   //set the gyro range to 2000
-  mpu.setFullScaleAccelRange(3);  //set the accelerometer sensibilty to 16g
+  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+  //mpu.setFullScaleGyroRange(3);   //set the gyro range to 2000
+  //mpu.setFullScaleAccelRange(3);  //set the accelerometer sensibilty to 16g
   mpu.setXGyroOffset(220);
   mpu.setYGyroOffset(76);
   mpu.setZGyroOffset(-85);
   mpu.setZAccelOffset(1788);
   devStatus = mpu.dmpInitialize();
-  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+  //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
   if (devStatus == 0) {  //0 ha jó, ha 1 baj van
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
     mpu.setDMPEnabled(true);
-    mpuIntStatus = mpu.getIntStatus();
+    //mpuIntStatus = mpu.getIntStatus();
     dmpReady = true;
     packetSize = mpu.dmpGetFIFOPacketSize();
     s.println("DMP müksz");
@@ -111,6 +126,7 @@ void setupIMU() {
     sImu = sError;
     tImuDelay = 10000;  // esetleg később megpróbálunk újrainicializálni
     s.println("DMP nem müksz");
+    s.println(devStatus); //1- initial memory load failed, 2- DMP conf. updates failed
   }
   s.println("IMU OK");
   sImu = sRun;
@@ -150,10 +166,10 @@ void core0setup() {  // a.k.a. setup
     0);
 }
 
-void core0task() {  // a.k.a. loop
+void core0task(void* parameter) {  // a.k.a. loop
   for (;;) {
     if (firstRunCore0) {
-      twi.begin(i2cSDA, i2cSCL, 400000);
+      //twi.begin(i2cSDA, i2cSCL, 400000);
       firstRunCore0 = false;
     }
     // imu ....
@@ -174,7 +190,7 @@ void core0task() {  // a.k.a. loop
         case sStart:
           {
             setupIMU();
-            setupBME();
+            //setupBME();
             break;
           }
         default:

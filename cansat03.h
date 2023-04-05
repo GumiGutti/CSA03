@@ -64,10 +64,9 @@ statusfield_t status;
 #define mot1CCW 33   // generic
 #define GPIO34 34    // INPUT ONLY!
 #define GPIO35 35    // INPUT ONLY!
-#define INTERRUPT_PIN 36    // INPUT ONLY! - MPU6500 interrupt
+#define GPIO36 36    // INPUT ONLY!
 #define mot1SW 37    // N/A
 #define GPIO38 38    // N/A
 #define photoRes 39  // INPUT ONLY!
 
-#define ICACHE_RAM_ATTR
 #define SEALEVELPRESSURE_HPA (1013.25)
