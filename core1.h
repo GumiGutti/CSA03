@@ -47,7 +47,7 @@ void core1setup(void) {  // a.k.a. setup
     "core1task",
     10000,
     NULL,
-    0,
+    3,
     &hCore1task,
     1);
 }
