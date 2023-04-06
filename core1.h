@@ -106,15 +106,18 @@ void core1task(void* parameter) {
             addByteToTxBuff(32);
             uint32_t txID = millis();
             uStatus.statusBits = status;
+
             // status field
             // addByteToTxBuff(uStatus.statusChars[1]);
             // addByteToTxBuff(uStatus.statusChars[0]);
             addByteToTxBuff(1 << (tikk / 16));
             addByteToTxBuff(1 << (15 - (tikk / 16)));
+
             // message unique ID
             addByteToTxBuff((char)(txID >> 16) & 0xff);
             addByteToTxBuff((char)(txID >> 8) & 0xff);
             addByteToTxBuff((char)(txID >> 0) & 0xff);
+
             // relative position to GS
             int16_t messze = 128 - abs((int16_t)tikk - 128);
             addByteToTxBuff((char)(messze >> 8) & 0xff);
@@ -123,23 +126,38 @@ void core1task(void* parameter) {
             addByteToTxBuff((char)(messze >> 0) & 0xff);
             addByteToTxBuff((char)(messze >> 8) & 0xff);
             addByteToTxBuff((char)(messze >> 0) & 0xff);
+
             // quaternion
             addByteToTxBuff((char)(tikk));
             addByteToTxBuff((char)(tikk));
             addByteToTxBuff((char)(255 - tikk));
             addByteToTxBuff((char)(255 - tikk));
+
             // RSSI
             addByteToTxBuff((char)(tikk));
+
             // SNR
             addByteToTxBuff((char)(255 - tikk));
+
             // absolute pressure
             uint16_t nyomas = 37100;
             addByteToTxBuff((char)(nyomas >> 8) & 0xff);
             addByteToTxBuff((char)(nyomas >> 0) & 0xff);
+
             // temperature
-            uint16_t tem = (uint16_t)((273.15 + dsTemp) * 100.0);
+            uint32_t tz = micros();
+
+            xSemaphoreTake(xTemp, portMAX_DELAY);
+            
+            s.printf("Lock daley %d us - Temp %+06.2f fok\n", micros() - tz, Temp);
+            uint16_t tem = (uint16_t)((273.15 + Temp) * 100.0);
+            
+            xSemaphoreGive(xTemp);
+            
+            s.printf("Core0 Temperature %+6.2f\n", (tem / 100.0)-273.15);
             addByteToTxBuff((char)(tem >> 8) & 0xff);
             addByteToTxBuff((char)(tem >> 0) & 0xff);
+
             // GPS lat, lon, alt
             addByteToTxBuff(tikk);
             addByteToTxBuff(tikk);
@@ -147,12 +165,15 @@ void core1task(void* parameter) {
             addByteToTxBuff(tikk);
             addByteToTxBuff(tikk);
             addByteToTxBuff(tikk);
+
             // current
             addByteToTxBuff(45 + tikk / 64);
+
             // energy %
             addByteToTxBuff(200 - tikk / 16);
+
             // voltage
-            addByteToTxBuff(170 - tikk / 32); 
+            addByteToTxBuff(170 - tikk / 32);
             addByteToTxBuff(chk);
 
             addToTxBuff(" 1");
@@ -162,6 +183,7 @@ void core1task(void* parameter) {
             digitalWrite(pinPon, 0);  // radio time "net" = 41 ms
             getRadio(100000);         // # packet sent
             digitalWrite(pinPin, 0);
+
             // tchk full loraTask = 56.2 ms
             break;
           }
@@ -185,7 +207,7 @@ void core1task(void* parameter) {
             }
             // putRadio("factoryRESET", 50000);
             putRadio("radio set sf sf7", 10000);
-            putRadio("radio set freq 868100000", 10000);
+            putRadio("radio set freq 869100000", 10000);
             putRadio("radio set bw 250", 10000);
             putRadio("radio set rxbw 250", 10000);
             putRadio("radio set cr 4/5", 10000);
@@ -252,5 +274,6 @@ void core1task(void* parameter) {
     //       }
     //   }
     // }
+    vTaskDelay(1);
   }
 }
