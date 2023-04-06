@@ -8,19 +8,19 @@
 SemaphoreHandle_t xTemp;      // temperature, calculated, fusion: DS, BME, BMP, 6500
 SemaphoreHandle_t xPressure;  // calculated, fusion: BME, BMP
 SemaphoreHandle_t xHumidity;  // measured (BME)
-SemaphoreHandle_t xImuok; //
-SemaphoreHandle_t xBmpok; //
-SemaphoreHandle_t xBmeok; //
-SemaphoreHandle_t xAdxlok; //
-SemaphoreHandle_t xInaok; //
-SemaphoreHandle_t xDsok; //
-SemaphoreHandle_t xPosx; //
-SemaphoreHandle_t xPosy; //
-SemaphoreHandle_t xPosz; //
-SemaphoreHandle_t xQa; //
-SemaphoreHandle_t xQi; //
-SemaphoreHandle_t xQj; //
-SemaphoreHandle_t xQk; //
+SemaphoreHandle_t xImuok; // 
+SemaphoreHandle_t xBmpok; // 
+SemaphoreHandle_t xBmeok; // 
+SemaphoreHandle_t xAdxlok; // 
+SemaphoreHandle_t xInaok; // 
+SemaphoreHandle_t xDsok; // 
+SemaphoreHandle_t xPosx; // 
+SemaphoreHandle_t xPosy; // 
+SemaphoreHandle_t xPosz; // 
+SemaphoreHandle_t xQa; // 
+SemaphoreHandle_t xQi; // 
+SemaphoreHandle_t xQj; // 
+SemaphoreHandle_t xQk; // 
 
 // core 1 állítja elő:
 SemaphoreHandle_t xLat; //
@@ -99,9 +99,10 @@ union uStatusUnion {
 #define mot1CCW 33   // generic
 #define GPIO34 34    // INPUT ONLY!
 #define GPIO35 35    // INPUT ONLY!
-#define GPIO36 36    // INPUT ONLY!
+#define INTERRUPT_PIN 36    // INPUT ONLY!
 #define mot1SW 37    // N/A
 #define GPIO38 38    // N/A
 #define photoRes 39  // INPUT ONLY!
 
+#define ICACHE_RAM_ATTR
 #define SEALEVELPRESSURE_HPA (1013.25)

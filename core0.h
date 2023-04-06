@@ -11,7 +11,7 @@
 // task:
 // for(;;):
 // szenzor olvasások:
-//   200Hz: MPU,ADXL,kvaternió,integrálás (pozíció)
+// 200Hz: MPU,ADXL,kvaternió,integrálás (pozíció)
 
 TaskHandle_t hCore0task;
 
@@ -30,14 +30,14 @@ TaskHandle_t hCore0task;
 // #include <Adafruit_INA219.h>
 
 
-//#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-//    #include "Wire.h"
-//#endif 
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include "Wire.h"
+#endif 
 
+MPU6050 mpu;
 Adafruit_BMP280 bmp;
 TwoWire twi(0);
 OneWire ds(ds18Pin);
-//MPU6050 mpu;
 //MPU6050 accelgyro;
 Adafruit_BME280 bme;
 
@@ -47,30 +47,51 @@ Adafruit_BME280 bme;
 
 
 bool dmpReady = false;   // set true if DMP init was successful
-//uint8_t mpuIntStatus;    // holds actual interrupt status byte from MPU
+uint8_t mpuIntStatus;    // holds actual interrupt status byte from MPU
 uint8_t devStatus;       // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;     // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;      // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64];  // FIFO storage buffer
-int16_t ax, ay, az;      //For acceleration
 
 // Variables for the IMU
 Quaternion q;    // [w, x, y, z]         quaternion container
 VectorInt16 aa;  // [x, y, z]            accel sensor measurements
 VectorFloat gravity;
+VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
+VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
 float ypr[3];
+float disp_x = 0;
+float disp_y = 0;
+float disp_z = 0;
+
+float velo_x = 0;
+float velo_y = 0;
+float velo_z = 0;
+
+float deltaT;
+
+volatile bool mpuInterrupt = false;
+void ICACHE_RAM_ATTR dmpDataReady(){
+  mpuInterrupt = true;
+}
 
 uint32_t tImuTrigger = 0;
-uint32_t tImuDelay = 50; 
+uint32_t tImuDelay = 50;
+uint32_t tIMUrestart = 5000;
+uint32_t tIMUrestrigger = 0; 
 
 uint32_t tBMPdelay = 100;
 uint32_t tBMPtrigger = 0;
+uint32_t tBMPrestart = 5000;
+uint32_t tBMPrestrigger = 0;
 
 uint32_t tDSdelay = 125; 
 uint32_t tDStrigger = 0;
 
 uint32_t tBMEdelay = 100;
 uint32_t tBMEtrigger = 0;
+uint32_t tBMErestart = 5000;
+uint32_t tBMErestrigger = 0;
 
 
 enum taskState { sRun,
@@ -103,26 +124,125 @@ void core0task(void* parameter) {  // a.k.a. loop
       s.println("Elsőkör");
       firstRunCore0 = false;
     }
-    // imu .... 
-    /*
+    
     if (millis() - tImuTrigger > tImuDelay) {
       tImuTrigger = millis();
       switch (sImu) {
         case sRun:
           {
-            GetAcceleration();
-            GetOrientation();
-            GetBMEdata();
+            //kvaterniók
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            xSemaphoreTake(xQa, portMAX_DELAY);
+            Qa = q.w;
+            xSemaphoreGive(xQa);
+            
+            xSemaphoreTake(xQi, portMAX_DELAY);
+            Qi = q.x;
+            xSemaphoreGive(xQi);
+
+            xSemaphoreTake(xQj, portMAX_DELAY);
+            Qj = q.y;
+            xSemaphoreGive(xQj);
+            
+            xSemaphoreTake(xQk, portMAX_DELAY);
+            Qk = q.z;
+            xSemaphoreGive(xQk);
+            
+            //Worldaccel
+            mpu.dmpGetAccel(&aa, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+            mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);           
+            float Wacc_x = aaWorld.x;     
+            float Wacc_y = aaWorld.y;      
+            float Wacc_z = aaWorld.z;
+            deltaT = millis() - tImuTrigger;
+
+            velo_x += Wacc_x * deltaT;
+            velo_y += Wacc_y * deltaT;
+            velo_z += Wacc_z * deltaT;
+
+            disp_x += velo_x * deltaT;
+            disp_y += velo_y * deltaT;
+            disp_z += velo_z * deltaT;
+            
+            xSemaphoreTake(xPosx, portMAX_DELAY);
+            Posx = disp_x;
+            xSemaphoreGive(xPosx);
+
+            xSemaphoreTake(xPosy, portMAX_DELAY);
+            Posy = disp_y;
+            xSemaphoreGive(xPosy);
+
+            xSemaphoreTake(xPosz, portMAX_DELAY);
+            Posz = disp_z;
+            xSemaphoreGive(xPosz);
             break;
           }
         case sError:
           {
+            if(millis() - tIMUrestrigger > tIMUrestart){
+              tIMUrestrigger = millis();
+              sImu = sStart;
+            }
             break;
           }
         case sStart:
           {
-            setupIMU();
-            //setupBME();
+            #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+                Wire.begin();
+                //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+            #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+                Fastwire::setup(400, true);
+            #endif
+
+            // initialize device
+            s.println(F("Initializing I2C devices..."));
+            mpu.initialize();
+            pinMode(INTERRUPT_PIN, INPUT);
+
+            // verify connection
+            s.println(F("Testing device connections..."));
+            s.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
+            // load and configure the DMP
+            s.println(F("Initializing DMP..."));
+            devStatus = mpu.dmpInitialize();
+
+            // supply your own gyro offsets here, scaled for min sensitivity
+            mpu.setXGyroOffset(220);
+            mpu.setYGyroOffset(76);
+            mpu.setZGyroOffset(-85);
+            mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+
+            if (devStatus == 0) {
+                // Calibration Time: generate offsets and calibrate our MPU6050
+                mpu.CalibrateAccel(6);
+                mpu.CalibrateGyro(6);
+                mpu.PrintActiveOffsets();
+                s.println(F("Enabling DMP..."));
+                mpu.setDMPEnabled(true);
+
+                // enable Arduino interrupt detection
+                s.print(F("Enabling interrupt detection (Arduino external interrupt "));
+                s.print(digitalPinToInterrupt(INTERRUPT_PIN));
+                s.println(F(")..."));
+                attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+                mpuIntStatus = mpu.getIntStatus();
+
+                // set our DMP Ready flag so the main loop() function knows it's okay to use it
+                s.println(F("DMP ready! Waiting for first interrupt..."));
+                dmpReady = true;
+
+                // get expected DMP packet size for later comparison
+                packetSize = mpu.dmpGetFIFOPacketSize();
+                sImu = sRun;
+            } else {      
+                s.print(F("DMP Initialization failed (code "));
+                s.print(devStatus);
+                s.println(F(")"));
+                sImu = sError;
+            }           
             break;
           }
         default:
@@ -130,8 +250,9 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
       }
       status.imuOK = (sImu == sRun);  // && range check OK
-    }
-     */ 
+      }
+    
+      
     if (millis() - tDStrigger > tDSdelay) {
       tDStrigger = millis();
       
@@ -149,11 +270,13 @@ void core0task(void* parameter) {  // a.k.a. loop
             ds.reset();
             ds.write(0xcc);
             ds.write(0x44, 1);
+            xSemaphoreTake(xTemp, portMAX_DELAY);
             if (data[1] & 128) {
-              s.println((((~result) >> 2) + 1) / -4.0);
+              Temp = (((~result) >> 2) + 1) / -4.0;
             } else {
-              s.println((result >> 2) / 4.0);
+              Temp = (result >> 2) / 4.0;
             }
+            xSemaphoreGive(xTemp);
             break;
           }
         case sError:
@@ -167,6 +290,9 @@ void core0task(void* parameter) {  // a.k.a. loop
             ds.write(0x7f, 1);
             ds.write(0xfc, 1);
             ds.write(0x3f, 0);
+            xSemaphoreTake(xDsok, portMAX_DELAY);
+            Dsok = 0;
+            xSemaphoreGive(xDsok);
             sDallas = sRun;
             break;
           }
@@ -197,6 +323,10 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sError:
           {
+            if(millis() - tBMPrestrigger > tBMPrestart){
+              tBMPrestrigger = millis();
+              sBMP = sStart;
+            }
             break;
           }
         case sStart:
@@ -207,6 +337,9 @@ void core0task(void* parameter) {  // a.k.a. loop
             if (!status) {
               s.println(F("Could not find a valid BMP280 sensor, check wiring or "
                       "try a different address!"));
+              xSemaphoreTake(xBmpok, portMAX_DELAY);
+              Bmpok = 0;
+              xSemaphoreGive(xBmpok);
               sBMP = sError;
             }
 
@@ -216,6 +349,9 @@ void core0task(void* parameter) {  // a.k.a. loop
                             Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                             Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                             Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+            xSemaphoreTake(xBmpok, portMAX_DELAY);
+            Bmpok = 1;
+            xSemaphoreGive(xBmpok);
             sBMP = sRun;
             break;
           }
@@ -231,25 +367,30 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sBME) {
         case sRun:
           {
-            s.print(F("BMETemperature = "));
-            s.print(bme.readTemperature());
-            s.println(" *C");
+            xSemaphoreTake(xPressure, portMAX_DELAY);
+            Pressure = bme.readPressure();
+            xSemaphoreGive(xPressure);
 
-            s.print(F("BMEPressure = "));
-            s.print(bme.readPressure());
-            s.println(" Pa");
-
-            s.print(F("BMEApprox altitude = "));
-            s.print(bme.readAltitude(1013.25)); /* Adjusted to local forecast! */
-            s.println(" m");
-
-            s.print("BMEHumidity = ");
-            s.print(bme.readHumidity());
-            s.println(" %");
+            xSemaphoreTake(xHumidity, portMAX_DELAY);
+            Humidity = bme.readHumidity();
+            xSemaphoreGive(xHumidity);
             break;
           }
         case sError:
           {
+            if(millis() - tBMErestrigger > tBMErestart){
+              tBMErestrigger = millis();
+              sBME = sStart;
+            }
+            else{ //Hiba esetén a BMP-től kéri az adatot
+            xSemaphoreTake(xPressure, portMAX_DELAY);
+            Pressure = bmp.readPressure();
+            xSemaphoreGive(xPressure);
+
+            xSemaphoreTake(xHumidity, portMAX_DELAY);
+            Humidity = bme.readHumidity();
+            xSemaphoreGive(xHumidity);
+            }
             break;
           }
         case sStart:
@@ -262,8 +403,14 @@ void core0task(void* parameter) {  // a.k.a. loop
             // status = bme.begin(0x76, &Wire2)
             if (!statusBME) {
                s.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
+               xSemaphoreTake(xBmeok, portMAX_DELAY);
+               Bmeok = 0;
+               xSemaphoreGive(xBmeok);
                sBME = sError;
-               }
+            }
+            xSemaphoreTake(xBmeok, portMAX_DELAY);
+            Bmeok = 1;
+            xSemaphoreGive(xBmeok);
             sBME = sRun;
             break;
           }
