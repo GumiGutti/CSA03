@@ -88,17 +88,17 @@ void setupDS(){
 }
 
 void BMPsetup(){
-  unsigned statusBMP;
+  unsigned status;
   //status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
-  statusBMP = bmp.begin(0x76, 0x58);
-  if (!statusBMP) {
-    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+  status = bmp.begin(0x76, 0x58);
+  if (!status) {
+    s.println(F("Could not find a valid BMP280 sensor, check wiring or "
                       "try a different address!"));
-    Serial.print("SensorID was: 0x"); Serial.println(bmp.sensorID(),16);
-    Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
-    Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
-    Serial.print("        ID of 0x60 represents a BME 280.\n");
-    Serial.print("        ID of 0x61 represents a BME 680.\n");
+    s.print("SensorID was: 0x"); Serial.println(bmp.sensorID(),16);
+    s.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
+    s.print("   ID of 0x56-0x58 represents a BMP 280,\n");
+    s.print("        ID of 0x60 represents a BME 280.\n");
+    s.print("        ID of 0x61 represents a BME 680.\n");
     while (1) delay(10);
   }
 
@@ -112,17 +112,17 @@ void BMPsetup(){
 }
 
 void BMPdata(){
-  Serial.print(F("Temperature = "));
-  Serial.print(bmp.readTemperature());
-  Serial.println(" *C");
+  s.print(F("Temperature = "));
+  s.print(bmp.readTemperature());
+  s.println(" *C");
 
-  Serial.print(F("Pressure = "));
-  Serial.print(bmp.readPressure());
-  Serial.println(" Pa");
+  s.print(F("Pressure = "));
+  s.print(bmp.readPressure());
+  s.println(" Pa");
 
-  Serial.print(F("Approx altitude = "));
-  Serial.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
-  Serial.println(" m");
+  s.print(F("Approx altitude = "));
+  s.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
+  s.println(" m");
 }
 
 void dallas(){
@@ -235,10 +235,11 @@ void core0setup() {  // a.k.a. setup
 }
 
 void core0task(void* parameter) {  // a.k.a. loop
+  s.println("core0task fut");
   for (;;) {
     if (firstRunCore0) {
-      twi.begin(i2cSDA, i2cSCL, 400000);
-      Serial.println("Elsőkör");
+      //twi.begin(i2cSDA, i2cSCL, 400000);
+      s.println("Elsőkör");
       firstRunCore0 = false;
     }
     // imu .... 
@@ -296,8 +297,8 @@ void core0task(void* parameter) {  // a.k.a. loop
       }
     }
     
-    
     // bmp ....
+    
     if (millis() - tBMPtrigger > tBMPdelay) {
       tBMPtrigger = millis();
       
