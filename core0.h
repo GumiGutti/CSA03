@@ -28,10 +28,10 @@ TaskHandle_t hCore0task;
 // #include <bme280.h>
 // #include <Adafruit_INA219.h>
 
-/*
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-    #include "Wire.h"
-#endif */
+
+//#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+//    #include "Wire.h"
+//#endif 
 
 Adafruit_BMP280 bmp;
 TwoWire twi(0);
@@ -78,71 +78,7 @@ bool firstRunCore0 = true;
 
 void core0task(void* parameter);
 
-void setupDS(){
-  ds.write(0xcc);
-  ds.write(0x4e, 1);
-  ds.write(0x7f, 1);
-  ds.write(0xfc, 1);
-  ds.write(0x3f, 0);
-  sDallas = sRun;
-}
 
-void BMPsetup(){
-  unsigned status;
-  //status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
-  status = bmp.begin(0x76, 0x58);
-  if (!status) {
-    s.println(F("Could not find a valid BMP280 sensor, check wiring or "
-                      "try a different address!"));
-    s.print("SensorID was: 0x"); Serial.println(bmp.sensorID(),16);
-    s.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
-    s.print("   ID of 0x56-0x58 represents a BMP 280,\n");
-    s.print("        ID of 0x60 represents a BME 280.\n");
-    s.print("        ID of 0x61 represents a BME 680.\n");
-    while (1) delay(10);
-  }
-
-  /* Default settings from datasheet. */
-  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
-  sBMP = sRun;
-}
-
-void BMPdata(){
-  s.print(F("Temperature = "));
-  s.print(bmp.readTemperature());
-  s.println(" *C");
-
-  s.print(F("Pressure = "));
-  s.print(bmp.readPressure());
-  s.println(" Pa");
-
-  s.print(F("Approx altitude = "));
-  s.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
-  s.println(" m");
-}
-
-void dallas(){
-  uint16_t result;
-  byte data[2];
-  ds.reset();
-  ds.write(0xcc);
-  ds.write(0xbe);
-  data[0] = ds.read();
-  data[1] = ds.read();
-  result = ((uint16_t)data[1] << 8) | data[0];
-  ds.reset();
-  ds.write(0xcc);
-  ds.write(0x44, 1);
-  if (data[1] & 128) {
-    s.println((((~result) >> 2) + 1) / -4.0);
-  } else {
-    s.println((result >> 2) / 4.0);
-  }
-}
 /*
 void setupBME() {
   unsigned status;
@@ -229,7 +165,7 @@ void core0setup() {  // a.k.a. setup
     "core0task",
     10000,
     NULL,
-    0,
+    CORE0TASKPRIO,
     &hCore0task,
     0);
 }
@@ -279,7 +215,22 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sDallas) {
         case sRun:
           {
-            dallas();
+            uint16_t result;
+            byte data[2];
+            ds.reset();
+            ds.write(0xcc);
+            ds.write(0xbe);
+            data[0] = ds.read();
+            data[1] = ds.read();
+            result = ((uint16_t)data[1] << 8) | data[0];
+            ds.reset();
+            ds.write(0xcc);
+            ds.write(0x44, 1);
+            if (data[1] & 128) {
+              s.println((((~result) >> 2) + 1) / -4.0);
+            } else {
+              s.println((result >> 2) / 4.0);
+            }
             break;
           }
         case sError:
@@ -288,7 +239,12 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sStart:
           {
-            setupDS();
+            ds.write(0xcc);
+            ds.write(0x4e, 1);
+            ds.write(0x7f, 1);
+            ds.write(0xfc, 1);
+            ds.write(0x3f, 0);
+            sDallas = sRun;
             break;
           }
         default:
@@ -305,7 +261,17 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sBMP) {
         case sRun:
           {
-            BMPdata();
+            s.print(F("Temperature = "));
+            s.print(bmp.readTemperature());
+            s.println(" *C");
+
+            s.print(F("Pressure = "));
+            s.print(bmp.readPressure());
+            s.println(" Pa");
+
+            s.print(F("Approx altitude = "));
+            s.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
+            s.println(" m");
             break;
           }
         case sError:
@@ -314,7 +280,27 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sStart:
           {
-            BMPsetup();
+            unsigned status;
+            //status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
+            status = bmp.begin(0x76, 0x58);
+            if (!status) {
+              s.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                      "try a different address!"));
+              s.print("SensorID was: 0x"); Serial.println(bmp.sensorID(),16);
+              s.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
+              s.print("   ID of 0x56-0x58 represents a BMP 280,\n");
+              s.print("        ID of 0x60 represents a BME 280.\n");
+              s.print("        ID of 0x61 represents a BME 680.\n");
+              sBMP = sError;
+            }
+
+            /* Default settings from datasheet. */
+            bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                            Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                            Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                            Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                            Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+            sBMP = sRun;
             break;
           }
         default:
