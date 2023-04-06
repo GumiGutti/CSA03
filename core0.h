@@ -16,27 +16,29 @@
 TaskHandle_t hCore0task;
 
 #include <SPI.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <Wire.h>
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 // #include <Adafruit_Sensor.h>
 // #include <Adafruit_ADXL375.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
 // #include <bme280.h>
 // #include <Adafruit_INA219.h>
 
+/*
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
-#endif
+#endif */
 
-MPU6050 mpu;
-MPU6050 accelgyro;
-Adafruit_BME280 bme;
-
-
-//TwoWire twi(0);
-
+Adafruit_BMP280 bmp;
+TwoWire twi(0);
+OneWire ds(ds18Pin);
+//MPU6050 mpu;
+//MPU6050 accelgyro;
+//Adafruit_BME280 bme;
 
 // SPIClass hspi(HSPI);
 // Adafruit_ADXL375 accel = Adafruit_ADXL375(accCS, &hspi, 12345);
@@ -57,25 +59,91 @@ VectorInt16 aa;  // [x, y, z]            accel sensor measurements
 VectorFloat gravity;
 float ypr[3];
 
-
-//volatile bool mpuInterrupt = false;  // indicates whether MPU interrupt pin has gone high
-
 uint32_t tImuTrigger = 0;
-uint32_t tImuDelay = 50;  // milliseconds = 200 Hz
+uint32_t tImuDelay = 50; 
+uint32_t tBMPdelay = 100;
+uint32_t tBMPtrigger = 0;
+uint32_t tDSdelay = 125; 
+uint32_t tDStrigger = 0;
 
-//void ICACHE_RAM_ATTR dmpDataReady() {
-  //mpuInterrupt = true;
-//}
 
 enum taskState { sRun,
                  sError,
                  sStart };
 taskState sImu = sStart;
 taskState sBME = sStart;
+taskState sDallas = sStart;
+taskState sBMP = sStart;
 bool firstRunCore0 = true;
 
 void core0task(void* parameter);
 
+void setupDS(){
+  ds.write(0xcc);
+  ds.write(0x4e, 1);
+  ds.write(0x7f, 1);
+  ds.write(0xfc, 1);
+  ds.write(0x3f, 0);
+  sDallas = sRun;
+}
+
+void BMPsetup(){
+  unsigned statusBMP;
+  //status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
+  statusBMP = bmp.begin(0x76, 0x58);
+  if (!statusBMP) {
+    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                      "try a different address!"));
+    Serial.print("SensorID was: 0x"); Serial.println(bmp.sensorID(),16);
+    Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
+    Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
+    Serial.print("        ID of 0x60 represents a BME 280.\n");
+    Serial.print("        ID of 0x61 represents a BME 680.\n");
+    while (1) delay(10);
+  }
+
+  /* Default settings from datasheet. */
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+  sBMP = sRun;
+}
+
+void BMPdata(){
+  Serial.print(F("Temperature = "));
+  Serial.print(bmp.readTemperature());
+  Serial.println(" *C");
+
+  Serial.print(F("Pressure = "));
+  Serial.print(bmp.readPressure());
+  Serial.println(" Pa");
+
+  Serial.print(F("Approx altitude = "));
+  Serial.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
+  Serial.println(" m");
+}
+
+void dallas(){
+  uint16_t result;
+  byte data[2];
+  ds.reset();
+  ds.write(0xcc);
+  ds.write(0xbe);
+  data[0] = ds.read();
+  data[1] = ds.read();
+  result = ((uint16_t)data[1] << 8) | data[0];
+  ds.reset();
+  ds.write(0xcc);
+  ds.write(0x44, 1);
+  if (data[1] & 128) {
+    s.println((((~result) >> 2) + 1) / -4.0);
+  } else {
+    s.println((result >> 2) / 4.0);
+  }
+}
+/*
 void setupBME() {
   unsigned status;
   //status = bme.begin(0x76, &twi); 
@@ -154,14 +222,14 @@ void GetBMEdata() {
   float altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
   float humidity = bme.readHumidity();
 }
-
+*/
 void core0setup() {  // a.k.a. setup
   xTaskCreatePinnedToCore(
     core0task,
     "core0task",
     10000,
     NULL,
-    1,
+    0,
     &hCore0task,
     0);
 }
@@ -169,10 +237,12 @@ void core0setup() {  // a.k.a. setup
 void core0task(void* parameter) {  // a.k.a. loop
   for (;;) {
     if (firstRunCore0) {
-      //twi.begin(i2cSDA, i2cSCL, 400000);
+      twi.begin(i2cSDA, i2cSCL, 400000);
+      Serial.println("Elsőkör");
       firstRunCore0 = false;
     }
-    // imu ....
+    // imu .... 
+    /*
     if (millis() - tImuTrigger > tImuDelay) {
       tImuTrigger = millis();
       switch (sImu) {
@@ -198,6 +268,58 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
       }
       status.imuOK = (sImu == sRun);  // && range check OK
+    }
+     */ 
+    // ds  ....
+    
+    if (millis() - tDStrigger > tDSdelay) {
+      tDStrigger = millis();
+      
+      switch (sDallas) {
+        case sRun:
+          {
+            dallas();
+            break;
+          }
+        case sError:
+          {
+            break;
+          }
+        case sStart:
+          {
+            setupDS();
+            break;
+          }
+        default:
+          {  //itt baj van....}
+          }
+      }
+    }
+    
+    
+    // bmp ....
+    if (millis() - tBMPtrigger > tBMPdelay) {
+      tBMPtrigger = millis();
+      
+      switch (sBMP) {
+        case sRun:
+          {
+            BMPdata();
+            break;
+          }
+        case sError:
+          {
+            break;
+          }
+        case sStart:
+          {
+            BMPsetup();
+            break;
+          }
+        default:
+          {  //itt baj van....}
+          }
+      }
     }
   }
 }
