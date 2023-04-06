@@ -19,7 +19,7 @@ void setup() {
 
   core0setup();
   core1setup();
-
+  
 }
 
 void loop(){
