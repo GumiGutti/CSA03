@@ -4,31 +4,33 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-SemaphoreHandle_t i2cSemaphore;
-void createSemaphore(SemaphoreHandle_t &sem){
-    &sem = xSemaphoreCreateMutex();
-    xSemaphoreGive( ( sem) );
-}
+SemaphoreHandle_t xTemp;      // temperature, calculated, fusion: DS, BME, BMP, 6500
+SemaphoreHandle_t xPressure;  // calculated, fusion: BME, BMP
+SemaphoreHandle_t xHumidity;  // measured (BME)
+SemaphoreHandle_t xImuok; //
+SemaphoreHandle_t xBmpok; //
+SemaphoreHandle_t xBmeok; //
+SemaphoreHandle_t xAdxlok; //
+SemaphoreHandle_t xInaok; //
+SemaphoreHandle_t xDsok; //
+SemaphoreHandle_t xPosx; //
+SemaphoreHandle_t xPosy; //
+SemaphoreHandle_t xPosz; //
+SemaphoreHandle_t xQa; //
+SemaphoreHandle_t xQi; //
+SemaphoreHandle_t xQj; //
+SemaphoreHandle_t xQk; //
+SemaphoreHandle_t xLat; //
+SemaphoreHandle_t xLon; //
+SemaphoreHandle_t xAlt; //
 
-// Lock the variable indefinietly. ( wait for it to be accessible )
-void lock(SemaphoreHandle_t &sem){
-    xSemaphoreTake(sem, portMAX_DELAY);
-}
 
-// give back the semaphore.
-void unlock(SemaphoreHandle_t &sem){
-    xSemaphoreGive(sem);
-}
+float Temp, Pressure, Humidity; 
+float Posx, Posy, Posz, Qa, Qi, Qj, Qk;
+float Lat, Lon, Alt;
 
-SemaphoreHandle_t xTemp; // temperature, calculated, fusion
-SemaphoreHandle_t xPressure; // calculated, fusion
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
-// SemaphoreHandle_t ; //
+bool Imuok, Bmpok, Bmeok, Adxlok, Inaok, Dsok; // true, ha minden rendben
+// XXXok - nem sijerült az init, error state-ben van, out of range (max/min érték), nem változik az értéke sokáig 
 
 
 // TO általában: TimeOut
@@ -62,7 +64,7 @@ union uStatusUnion {
 #define loraTx 2     // generic
 #define GPIO03 3     // N/A
 #define loraRx 4     // generic
-#define pinPin 5      // generic
+#define pinPin 5     // generic
 #define GPIO0 6      // N/A
 #define GPIO0 7      // N/A
 #define GPIO0 8      // N/A
