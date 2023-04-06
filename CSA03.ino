@@ -7,6 +7,9 @@ HardwareSerial gps(2);   // use UART2
 #include "core0.h"
 #include "core1.h"
 
+#define CORE0TASKPRIO 3
+#define CORE1TASKPRIO 3
+
 void setup() {
 
   s.begin(115200);
