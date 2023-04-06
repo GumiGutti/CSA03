@@ -13,7 +13,7 @@
 // core0 csere struktúra
 // core0 mutex
 // SD data prep
-// am transfer buffer
+// cam transfer buffer
 // cam transer protocol
 // cam control
 // mission phase calc
@@ -23,6 +23,7 @@
 // lora regular
 // lora backup layers
 // flight control
+// heap check - heap_caps_get_free_size(MALLOC_CAP_8BIT);
 
 
 
@@ -42,11 +43,8 @@
 // intercom parser
 // gps parser
 
-// #include <OneWire.h>
-// #include <DallasTemperature.h>
 // #include <EEPROM.h>
 #include "lora.h"
-#include <OneWire.h>
 
 TaskHandle_t hCore1task;
 // OneWire ds(ds18Pin);
@@ -54,10 +52,6 @@ TaskHandle_t hCore1task;
 uint32_t tLoraTrigger = 0;
 uint32_t tLoraDelay = 500;
 taskState sLora = sStart;
-
-// uint32_t tDallasTrigger = 0;
-// uint32_t tDallasDelay = 100;  // 10Hz
-// taskState sDallas = sStart;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 uint16_t blink;
@@ -230,50 +224,8 @@ void core1task(void* parameter) {
           }
       }
     }
-    // DS18B20
-    // if (millis() - tDallasTrigger > tDallasDelay) {
-    //   tDallasTrigger = millis();
-    //   s.println("Dallas tick");
-    //   switch (sDallas) {
-    //     case sRun:
-    //       {
-    //         uint16_t result;
-    //         byte data[2];
-    //         ds.reset();
-    //         ds.write(0xcc);
-    //         ds.write(0xbe);
-    //         data[0] = ds.read();
-    //         data[1] = ds.read();
-    //         result = ((uint16_t)data[1] << 8) | data[0];
-    //         ds.reset();
-    //         ds.write(0xcc);
-    //         ds.write(0x44, 1);
-    //         if (data[1] & 128) {
-    //           dsTemp = (((~result) >> 2) + 1) / -4.0;
-    //         } else {
-    //           dsTemp = (result >> 2) / 4.0;
-    //         }
-    //         break;
-    //       }
-    //     case sError:
-    //       {
-    //         break;
-    //       }
-    //     case sStart:
-    //       {
-    //         ds.write(0xcc);
-    //         ds.write(0x4e, 1);
-    //         ds.write(0x7f, 1);
-    //         ds.write(0xfc, 1);
-    //         ds.write(0x3f, 0);
-    //         sDallas = sRun;
-    //         break;
-    //       }
-    //     default:
-    //       {  //itt baj van....}
-    //       }
-    //   }
-    // }
+    heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    
     vTaskDelay(1);
   }
 }

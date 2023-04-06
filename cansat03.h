@@ -8,33 +8,33 @@
 SemaphoreHandle_t xTemp;      // temperature, calculated, fusion: DS, BME, BMP, 6500
 SemaphoreHandle_t xPressure;  // calculated, fusion: BME, BMP
 SemaphoreHandle_t xHumidity;  // measured (BME)
-SemaphoreHandle_t xImuok; //
-SemaphoreHandle_t xBmpok; //
-SemaphoreHandle_t xBmeok; //
-SemaphoreHandle_t xAdxlok; //
-SemaphoreHandle_t xInaok; //
-SemaphoreHandle_t xDsok; //
-SemaphoreHandle_t xPosx; //
-SemaphoreHandle_t xPosy; //
-SemaphoreHandle_t xPosz; //
-SemaphoreHandle_t xQa; //
-SemaphoreHandle_t xQi; //
-SemaphoreHandle_t xQj; //
-SemaphoreHandle_t xQk; //
+SemaphoreHandle_t xImuok;     //
+SemaphoreHandle_t xBmpok;     //
+SemaphoreHandle_t xBmeok;     //
+SemaphoreHandle_t xAdxlok;    //
+SemaphoreHandle_t xInaok;     //
+SemaphoreHandle_t xDsok;      //
+SemaphoreHandle_t xPosx;      //
+SemaphoreHandle_t xPosy;      //
+SemaphoreHandle_t xPosz;      //
+SemaphoreHandle_t xQa;        //
+SemaphoreHandle_t xQi;        //
+SemaphoreHandle_t xQj;        //
+SemaphoreHandle_t xQk;        //
 
 // core 1 állítja elő:
-SemaphoreHandle_t xLat; //
-SemaphoreHandle_t xLon; //
-SemaphoreHandle_t xAlt; //
-SemaphoreHandle_t xGpsok; //
+SemaphoreHandle_t xLat;    //
+SemaphoreHandle_t xLon;    //
+SemaphoreHandle_t xAlt;    //
+SemaphoreHandle_t xGpsok;  //
 
 
-float Temp, Pressure, Humidity; 
+float Temp, Pressure, Humidity;
 float Posx, Posy, Posz, Qa, Qi, Qj, Qk;
 float Lat, Lon, Alt;
 
-bool Imuok, Bmpok, Bmeok, Adxlok, Inaok, Dsok, Gpsok; // true, ha minden rendben
-// XXXok - nem sikerült az init, error state-ben van, out of range (max/min érték), nem változik az értéke sokáig 
+bool Imuok, Bmpok, Bmeok, Adxlok, Inaok, Dsok, Gpsok;  // true, ha minden rendben
+// XXXok - nem sikerült az init, error state-ben van, out of range (max/min érték), nem változik az értéke sokáig
 
 
 // TO általában: TimeOut
