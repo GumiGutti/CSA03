@@ -132,11 +132,11 @@ void core0setup() {  // a.k.a. setup
 }
 
 void core0task(void* parameter) {  // a.k.a. loop
-  s.println("core0task fut");
+  //s.println("core0task fut");
   for (;;) {
     if (firstRunCore0) {
       //twi.begin(i2cSDA, i2cSCL, 400000);
-      s.println("Elsőkör");
+      //s.println("Elsőkör");
       firstRunCore0 = false;
     }
 
@@ -249,15 +249,14 @@ void core0task(void* parameter) {  // a.k.a. loop
               xSemaphoreGive(xImuok);
               sImu = sRun;
             } else {
+              xSemaphoreTake(xImuok, portMAX_DELAY);
+              Imuok = 0;
+              xSemaphoreGive(xImuok);
               if (debug) {
                 s.print(F("DMP Initialization failed (code "));
                 s.print(devStatus);
                 s.println(F(")"));
-                xSemaphoreTake(xImuok, portMAX_DELAY);
-                Imuok = 0;
-                xSemaphoreGive(xImuok);
               }
-
               sImu = sError;
             }
             break;
