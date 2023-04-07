@@ -20,26 +20,54 @@ void setup() {
   core0setup();
   core1setup();
 
-  xTemp = xSemaphoreCreateMutex();  xSemaphoreGive((xTemp));
-  xPressure = xSemaphoreCreateMutex();  xSemaphoreGive((xPressure));
-  xHumidity = xSemaphoreCreateMutex();  xSemaphoreGive((xHumidity));
-  xImuok = xSemaphoreCreateMutex();  xSemaphoreGive((xImuok));
-  xBmpok = xSemaphoreCreateMutex();  xSemaphoreGive((xBmpok));
-  xBmeok = xSemaphoreCreateMutex();  xSemaphoreGive((xBmeok));
-  xAdxlok = xSemaphoreCreateMutex();  xSemaphoreGive((xAdxlok));
-  xInaok = xSemaphoreCreateMutex();  xSemaphoreGive((xInaok));
-  xDsok = xSemaphoreCreateMutex();  xSemaphoreGive((xDsok));
-  xPosx = xSemaphoreCreateMutex();  xSemaphoreGive((xPosx));
-  xPosy = xSemaphoreCreateMutex();  xSemaphoreGive((xPosy));
-  xPosz = xSemaphoreCreateMutex();  xSemaphoreGive((xPosz));
-  xQa = xSemaphoreCreateMutex();  xSemaphoreGive((xQa));
-  xQi = xSemaphoreCreateMutex();  xSemaphoreGive((xQi));
-  xQj = xSemaphoreCreateMutex();  xSemaphoreGive((xQj));
-  xQk = xSemaphoreCreateMutex();  xSemaphoreGive((xQk));
-  xLat = xSemaphoreCreateMutex();  xSemaphoreGive((xLat));
-  xLon = xSemaphoreCreateMutex();  xSemaphoreGive((xLon));
-  xAlt= xSemaphoreCreateMutex();  xSemaphoreGive((xAlt));
-  xGpsok= xSemaphoreCreateMutex();  xSemaphoreGive((xGpsok));
+  xTemp = xSemaphoreCreateMutex();
+  xSemaphoreGive((xTemp));
+  xPressure = xSemaphoreCreateMutex();
+  xSemaphoreGive((xPressure));
+  xHumidity = xSemaphoreCreateMutex();
+  xSemaphoreGive((xHumidity));
+  xImuok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xImuok));
+  xBmpok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xBmpok));
+  xBmeok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xBmeok));
+  xAdxlok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xAdxlok));
+  xInaok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xInaok));
+  xDsok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xDsok));
+  xPosx = xSemaphoreCreateMutex();
+  xSemaphoreGive((xPosx));
+  xPosy = xSemaphoreCreateMutex();
+  xSemaphoreGive((xPosy));
+  xPosz = xSemaphoreCreateMutex();
+  xSemaphoreGive((xPosz));
+  xQa = xSemaphoreCreateMutex();
+  xSemaphoreGive((xQa));
+  xQi = xSemaphoreCreateMutex();
+  xSemaphoreGive((xQi));
+  xQj = xSemaphoreCreateMutex();
+  xSemaphoreGive((xQj));
+  xQk = xSemaphoreCreateMutex();
+  xSemaphoreGive((xQk));
+  xLat = xSemaphoreCreateMutex();
+  xSemaphoreGive((xLat));
+  xLon = xSemaphoreCreateMutex();
+  xSemaphoreGive((xLon));
+  xAlt = xSemaphoreCreateMutex();
+  xSemaphoreGive((xAlt));
+  xGpsok = xSemaphoreCreateMutex();
+  xSemaphoreGive((xGpsok));
+  xMissionphase = xSemaphoreCreateMutex();
+  xSemaphoreGive((xMissionphase));
+
+  xCurrent = xSemaphoreCreateMutex();
+  xSemaphoreGive((xCurrent));
+
+  xVoltage = xSemaphoreCreateMutex();
+  xSemaphoreGive((xVoltage));
 }
 
 void loop() {
