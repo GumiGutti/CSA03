@@ -8,7 +8,6 @@
 SemaphoreHandle_t xTemp;      // temperature, calculated, fusion: DS, BME, BMP, 6500
 SemaphoreHandle_t xPressure;  // calculated, fusion: BME, BMP
 SemaphoreHandle_t xHumidity;  // measured (BME)
-<<<<<<< HEAD
 SemaphoreHandle_t xImuok;     //
 SemaphoreHandle_t xBmpok;     //
 SemaphoreHandle_t xBmeok;     //
