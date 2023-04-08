@@ -6,6 +6,11 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
+
+#define CR 0x0d
+#define LF 0x0a
+
+
 // core 0 állítja elő:
 SemaphoreHandle_t xTemp;      // temperature, calculated, fusion: DS, BME, BMP, 6500
 SemaphoreHandle_t xPressure;  // calculated, fusion: BME, BMP
@@ -49,68 +54,35 @@ bool Gpsok;
 float Lat, Lon, Alt;
 byte Missionphase;
 
-
-// TO általában: TimeOut
-
-// typedef struct statusfield {
-//   bool gpsNoTO : 1;
-//   bool gpsLockOK : 1;
-//   bool gpsTimeOK : 1;
-//   bool bmpOK : 1;
-//   bool bmeOK : 1;
-//   bool adxlOK : 1;
-//   bool imuOK : 1;
-//   bool inaOK : 1;
-//   bool camOK : 1;
-//   bool sdcardOK : 1;
-//   bool bufferOK : 1;
-//   bool dsOK : 1;
-//   bool lightOK : 1;
-//   byte missionPhase : 3;
-// };
-
-// typedef struct datarecord {
-  // bool gpsNoTO : 1;
-  // bool gpsLockOK : 1;
-  // bool gpsTimeOK : 1;
-  // bool bmpOK : 1;
-  // bool bmeOK : 1;
-  // bool adxlOK : 1;
-  // bool imuOK : 1;
-  // bool inaOK : 1;
-  // bool camOK : 1;
-  // bool sdcardOK : 1;
-  // bool bufferOK : 1;
-  // bool dsOK : 1;
-  // bool lightOK : 1;
-  // byte missionPhase : 3;
-  bool gpsNoTO;
-  bool gpsLockOK;
-  bool gpsTimeOK;
-  bool bmpOK;
-  bool bmeOK;
-  bool adxlOK;
-  bool imuOK;
-  bool inaOK;
-  bool camOK;
-  bool sdcardOK;
-  bool bufferOK;
-  bool dsOK;
-  bool lightOK;
-  byte missionPhase;
-  float temp;
-  float pressure;
-  float humidity;
-  float posx;
-  float posy;
-  float posz;
-  float qa;
-  float qi;
-  float qj;
-  float qk;
-  float lat;
-  float current;
-  float voltage;
+bool gpsNoTO;
+bool gpsLockOK;
+bool gpsTimeOK;
+bool bmpOK;
+bool bmeOK;
+bool adxlOK;
+bool imuOK;
+bool inaOK;
+bool camOK;
+bool sdcardOK;
+bool bufferOK;
+bool dsOK;
+bool dgpsOK;
+byte missionPhase;
+float temp;
+float pressure;
+float humidity;
+float posx;
+float posy;
+float posz;
+float qa;
+float qi;
+float qj;
+float qk;
+float lat;
+float lon;
+float alt;
+float current;
+float voltage;
 // };
 
 // struct datarecord data;
@@ -151,7 +123,7 @@ byte Missionphase;
 #define mot1CCW 33        // generic
 #define GPIO34 34         // INPUT ONLY!
 #define GPIO35 35         // INPUT ONLY!
-#define INTERRUPT_PIN 36  // INPUT ONLY!
+#define INTERRUPT_PIN 15  // INPUT ONLY!
 #define mot1SW 37         // N/A
 #define GPIO38 38         // N/A
 #define photoRes 39       // INPUT ONLY!
@@ -159,4 +131,4 @@ byte Missionphase;
 #define ICACHE_RAM_ATTR
 #define SEALEVELPRESSURE_HPA (1013.25)
 
-#endif //  _CANSAT03_H_
+#endif  //  _CANSAT03_H_
