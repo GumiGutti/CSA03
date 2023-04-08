@@ -92,7 +92,7 @@ float voltage;
 #define loraTx 2          // generic
 #define GPIO03 3          // N/A
 #define loraRx 4          // generic
-#define pinPin 5          // generic
+#define GPIO5 5           // generic
 #define GPIO0 6           // N/A
 #define GPIO0 7           // N/A
 #define GPIO0 8           // N/A
@@ -102,10 +102,10 @@ float voltage;
 #define hspiMISO 12       // generic
 #define hspiMOSI 13       // generic
 #define hspiCLK 14        // generic
-#define GPIO15 15         // generic
+#define INTERRUPT_PIN 15  // generic
 #define gpsRx 16          // generic
 #define gpsTx 17          // generic
-#define pinPon 18         // generic
+#define GPIO18 18         // generic
 #define GPIO19 19         // generic
 #define GPIO20 20         // N/A
 #define i2cSDA 21         // generic
@@ -123,7 +123,7 @@ float voltage;
 #define mot1CCW 33        // generic
 #define GPIO34 34         // INPUT ONLY!
 #define GPIO35 35         // INPUT ONLY!
-#define INTERRUPT_PIN 15  // INPUT ONLY!
+#define GPIO36 36         // INPUT ONLY!
 #define mot1SW 37         // N/A
 #define GPIO38 38         // N/A
 #define photoRes 39       // INPUT ONLY!
