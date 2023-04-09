@@ -74,6 +74,9 @@ float Iaccel_x, Iaccel_y, Iaccel_z;  //imu mérések ide jönnek
 float busvoltage = 0;
 float current_mA = 0;
 
+float DStemp, BMEtemp, BMPtemp;  //Méréseknek
+float BMEpress, BMPpress;
+
 volatile bool mpuInterrupt = false;
 void ICACHE_RAM_ATTR dmpDataReady() {
   mpuInterrupt = true;
@@ -89,7 +92,10 @@ uint32_t tBMPtrigger = 0;
 uint32_t tBMPrestart = 5000;
 uint32_t tBMPrestrigger = 0;
 
-uint32_t tDSdelay = 125;
+uint32_t tFusionTrigger = 0;
+uint32_t tFusionDelay = 100;
+
+uint32_t tDSdelay = 100;
 uint32_t tDStrigger = 0;
 
 uint32_t tBMEdelay = 100;
@@ -109,11 +115,11 @@ uint32_t tINAtrigger = 0;
 enum taskState { sRun,
                  sError,
                  sStart };
-taskState sImu = sStart;
+taskState sImu = sError;
 taskState sBME = sStart;
 taskState sDallas = sStart;
 taskState sBMP = sStart;
-taskState sADXL = sStart;
+taskState sADXL = sError;
 taskState sINA = sStart;
 
 bool firstRunCore0 = true;
@@ -145,57 +151,66 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sImu) {
         case sRun:
           {
-            //kvaterniók
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            xSemaphoreTake(xQa, portMAX_DELAY);
-            Qa = q.w;
-            xSemaphoreGive(xQa);
+            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+              //kvaterniók
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              xSemaphoreTake(xQa, portMAX_DELAY);
+              Qa = q.w;
+              xSemaphoreGive(xQa);
 
-            xSemaphoreTake(xQi, portMAX_DELAY);
-            Qi = q.x;
-            xSemaphoreGive(xQi);
+              xSemaphoreTake(xQi, portMAX_DELAY);
+              Qi = q.x;
+              xSemaphoreGive(xQi);
 
-            xSemaphoreTake(xQj, portMAX_DELAY);
-            Qj = q.y;
-            xSemaphoreGive(xQj);
+              xSemaphoreTake(xQj, portMAX_DELAY);
+              Qj = q.y;
+              xSemaphoreGive(xQj);
 
-            xSemaphoreTake(xQk, portMAX_DELAY);
-            Qk = q.z;
-            xSemaphoreGive(xQk);
+              xSemaphoreTake(xQk, portMAX_DELAY);
+              Qk = q.z;
+              xSemaphoreGive(xQk);
 
-            //Worldaccel
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-            float Wacc_x = aaWorld.x;
-            float Wacc_y = aaWorld.y;
-            float Wacc_z = aaWorld.z;
-            deltaT = millis() - tImuTrigger;
+              //Worldaccel
+              mpu.dmpGetAccel(&aa, fifoBuffer);
+              mpu.dmpGetGravity(&gravity, &q);
+              mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+              mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+              float Wacc_x = (aaWorld.x * 0.122) / 1000;
+              float Wacc_y = (aaWorld.y * 0.122) / 1000;
+              float Wacc_z = (aaWorld.z * 0.122) / 1000;
+              deltaT = 1000.0 / tImuDelay;
 
-            velo_x += Wacc_x * deltaT;
-            velo_y += Wacc_y * deltaT;
-            velo_z += Wacc_z * deltaT;
+              velo_x += Wacc_x * deltaT;
+              velo_y += Wacc_y * deltaT;
+              velo_z += Wacc_z * deltaT;
 
-            disp_x += velo_x * deltaT;
-            disp_y += velo_y * deltaT;
-            disp_z += velo_z * deltaT;
+              disp_x += velo_x * deltaT;
+              disp_y += velo_y * deltaT;
+              disp_z += velo_z * deltaT;
+              if (debug) {
+                s.println(disp_x);
+                s.println(disp_y);
+                s.println(disp_z);
+              }
 
-            xSemaphoreTake(xPosx, portMAX_DELAY);
-            Posx = disp_x;
-            xSemaphoreGive(xPosx);
+              xSemaphoreTake(xPosx, portMAX_DELAY);
+              Posx = disp_x;
+              xSemaphoreGive(xPosx);
 
-            xSemaphoreTake(xPosy, portMAX_DELAY);
-            Posy = disp_y;
-            xSemaphoreGive(xPosy);
+              xSemaphoreTake(xPosy, portMAX_DELAY);
+              Posy = disp_y;
+              xSemaphoreGive(xPosy);
 
-            xSemaphoreTake(xPosz, portMAX_DELAY);
-            Posz = disp_z;
-            xSemaphoreGive(xPosz);
-            //s.println("Imu accs:");
-            //s.println(aa.x);
-            //s.println(aa.y);
-            //s.println(aa.z);
+              xSemaphoreTake(xPosz, portMAX_DELAY);
+              Posz = disp_z;
+              xSemaphoreGive(xPosz);
+              //s.println("Imu accs:");
+              //s.println(aa.x);
+              //s.println(aa.y);
+              //s.println(aa.z);
+            } else {
+              if (debug) s.println("imu bajos");
+            }
             break;
           }
         case sError:
@@ -208,7 +223,7 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sStart:
           {
-            Wire.begin();
+            //Wire.begin();
             //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
             // initialize device
@@ -218,10 +233,13 @@ void core0task(void* parameter) {  // a.k.a. loop
             devStatus = mpu.dmpInitialize();
 
             // supply your own gyro offsets here, scaled for min sensitivity
-            mpu.setXGyroOffset(220);
-            mpu.setYGyroOffset(76);
-            mpu.setZGyroOffset(-85);
-            mpu.setZAccelOffset(1788);  // 1688 factory default for my test chip
+            mpu.setXGyroOffset(-153);
+            mpu.setYGyroOffset(-368);
+            mpu.setZGyroOffset(-10);
+            mpu.setXAccelOffset(4328);
+            mpu.setYAccelOffset(4522);
+            mpu.setZAccelOffset(8906);  // 1688 factory default for my test chip
+
 
             if (devStatus == 0) {
               // Calibration Time: generate offsets and calibrate our MPU6050
@@ -281,13 +299,21 @@ void core0task(void* parameter) {  // a.k.a. loop
             ds.reset();
             ds.write(0xcc);
             ds.write(0x44, 1);
-            xSemaphoreTake(xTemp, portMAX_DELAY);
             if (data[1] & 128) {
-              Temp = (((~result) >> 2) + 1) / -4.0;
+              DStemp = (((~result) >> 2) + 1) / -4.0;
             } else {
-              Temp = (result >> 2) / 4.0;
+              DStemp = (result >> 2) / 4.0;
             }
-            xSemaphoreGive(xTemp);
+            //range check
+            if (-6.0 < DStemp < 35.0) {
+              xSemaphoreTake(xDsok, portMAX_DELAY);
+              Dsok = 1;
+              xSemaphoreGive(xDsok);
+            } else {
+              xSemaphoreTake(xDsok, portMAX_DELAY);
+              Dsok = 0;
+              xSemaphoreGive(xDsok);
+            }
             break;
           }
         case sError:
@@ -319,19 +345,8 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sBMP) {
         case sRun:
           {
-            /*
-            s.print(F("Temperature = "));
-            s.print(bmp.readTemperature());
-            s.println(" *C");
-
-            s.print(F("Pressure = "));
-            s.print(bmp.readPressure());
-            s.println(" Pa");
-
-            s.print(F("Approx altitude = "));
-            s.print(bmp.readAltitude(1013.25)); // Adjusted to local forecast! 
-            s.println(" m");
-            */
+            BMPtemp = bmp.readTemperature();
+            BMPpress = bmp.readPressure();
             break;
           }
         case sError:
@@ -380,13 +395,12 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sBME) {
         case sRun:
           {
-            xSemaphoreTake(xPressure, portMAX_DELAY);
-            Pressure = bme.readPressure();
-            xSemaphoreGive(xPressure);
-
             xSemaphoreTake(xHumidity, portMAX_DELAY);
             Humidity = bme.readHumidity();
             xSemaphoreGive(xHumidity);
+
+            BMEtemp = bme.readTemperature();
+            BMEpress = bme.readPressure();
             break;
           }
         case sError:
@@ -394,14 +408,6 @@ void core0task(void* parameter) {  // a.k.a. loop
             if (millis() - tBMErestrigger > tBMErestart) {
               tBMErestrigger = millis();
               sBME = sStart;
-            } else {  //Hiba esetén a BMP-től kéri az adatot
-              xSemaphoreTake(xPressure, portMAX_DELAY);
-              Pressure = bmp.readPressure();
-              xSemaphoreGive(xPressure);
-
-              xSemaphoreTake(xHumidity, portMAX_DELAY);
-              Humidity = bme.readHumidity();
-              xSemaphoreGive(xHumidity);
             }
             break;
           }
@@ -444,24 +450,20 @@ void core0task(void* parameter) {  // a.k.a. loop
             accel_x = event.acceleration.x;
             accel_y = event.acceleration.y;
             accel_z = event.acceleration.z;
-            //s.println("ADXL accels");
-            //s.println(accel_x * 0.49);
-            //s.println(accel_y * 0.49);
-            //s.println(accel_z * 0.49);
             break;
           }
         case sError:
-          {
+          { /*
             if (millis() - tADXLrestrigger > tADXLrestart) {
               tADXLrestrigger = millis();
               sADXL = sStart;
-            }
+            }*/
             break;
           }
         case sStart:
           {
             if (!accel.begin()) {
-              if (debug) s.println("ADXL nem müksz");
+              if (debug) s.println(" ");
               xSemaphoreTake(xAdxlok, portMAX_DELAY);
               Adxlok = 0;
               xSemaphoreGive(xAdxlok);
@@ -502,7 +504,7 @@ void core0task(void* parameter) {  // a.k.a. loop
         case sStart:
           {
             if (!ina219.begin()) {
-              if (debug) s.println("ADXL nem müksz");
+              if (debug) s.println("INA nem müksz");
               xSemaphoreTake(xInaok, portMAX_DELAY);
               Inaok = 0;
               xSemaphoreGive(xInaok);
@@ -518,6 +520,66 @@ void core0task(void* parameter) {  // a.k.a. loop
         default:
           {  //itt baj van....}
           }
+      }
+    }
+
+    if (millis() - tFusionTrigger > tFusionDelay) {
+      tFusionTrigger = millis();
+
+      if (true) {                      // Temperature fusion
+        if (Dsok && Bmeok && Bmpok) {  // Ha minden ok
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = (BMEtemp + DStemp + BMPtemp) / 3;
+          xSemaphoreGive(xTemp);
+
+        } else if (!Bmpok && !Bmeok) {  //Ha 2 kiesik a 3-ból mindig a fennmaradót vegye alapul
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = DStemp;
+          xSemaphoreGive(xTemp);
+        } else if (!Dsok && !Bmeok) {
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = BMPtemp;
+          xSemaphoreGive(xTemp);
+        } else if (!Bmeok && !Dsok) {
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = BMEtemp;
+          xSemaphoreGive(xTemp);
+
+        } else if (Dsok && Bmeok && !Bmpok) {  //Ha egy kiesik a 3-ból mindig a másik 2 számtani közepét vegye
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = (BMEtemp + DStemp) / 2;
+          xSemaphoreGive(xTemp);
+        } else if (!Dsok && Bmeok && Bmpok) {
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = (BMEtemp + BMPtemp) / 2;
+          xSemaphoreGive(xTemp);
+        } else if (Dsok && !Bmeok && Bmpok) {
+
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = (BMPtemp + DStemp) / 2;
+          xSemaphoreGive(xTemp);
+        }
+      }
+
+      if (true) {  // Pressure fusion
+        if (Bmeok && Bmpok) {
+          xSemaphoreTake(xPressure, portMAX_DELAY);
+          Pressure = (BMEpress + BMPpress) / 2.0;
+          xSemaphoreGive(xPressure);
+        } else if (Bmeok && !Bmpok) {
+          xSemaphoreTake(xPressure, portMAX_DELAY);
+          Pressure = BMEpress;
+          xSemaphoreGive(xPressure);
+        } else if (!Bmeok && Bmpok) {
+          xSemaphoreTake(xPressure, portMAX_DELAY);
+          Pressure = BMEpress;
+          xSemaphoreGive(xPressure);
+        }
       }
     }
   }
