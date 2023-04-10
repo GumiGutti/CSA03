@@ -26,7 +26,7 @@ TaskHandle_t hCore0task;
 #include <Adafruit_BME280.h>
 #include <Adafruit_INA219.h>
 
-bool debug = 1;
+bool debug = 0;
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 #include "Wire.h"
@@ -34,6 +34,7 @@ bool debug = 1;
 
 Adafruit_INA219 ina219;
 MPU6050 mpu;
+MPU6050 accelgyro;
 Adafruit_BMP280 bmp;
 TwoWire twi(0);
 OneWire ds(ds18Pin);
@@ -68,11 +69,15 @@ float velo_z = 0;  //imu számoláshoz sebesség
 float deltaT;  //imu integráláshoz eltelt idő
 
 float accel_x, accel_y, accel_z;     //adxl mérések ide jönnek
-float Iaccel_x, Iaccel_y, Iaccel_z;  //imu mérések ide jönnek
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
 
 //ina mérések ide jönnek
 float busvoltage = 0;
 float current_mA = 0;
+
+int16_t x, y, z; //adxl kalibrációhoz
 
 float DStemp, BMEtemp, BMPtemp;  //Méréseknek
 float BMEpress, BMPpress;
@@ -83,7 +88,7 @@ void ICACHE_RAM_ATTR dmpDataReady() {
 }
 
 uint32_t tImuTrigger = 0;
-uint32_t tImuDelay = 50;
+uint32_t tImuDelay = 150;
 uint32_t tIMUrestart = 5000;
 uint32_t tIMUrestrigger = 0;
 
@@ -114,12 +119,13 @@ uint32_t tINAtrigger = 0;
 
 enum taskState { sRun,
                  sError,
-                 sStart };
+                 sStart,
+                 sCalib };
 taskState sImu = sError;
 taskState sBME = sStart;
 taskState sDallas = sStart;
 taskState sBMP = sStart;
-taskState sADXL = sError;
+taskState sADXL = sStart;
 taskState sINA = sStart;
 
 bool firstRunCore0 = true;
@@ -141,6 +147,45 @@ void core0task(void* parameter) {  // a.k.a. loop
   //s.println("core0task fut");
   for (;;) {
     if (firstRunCore0) {
+      Wire.begin(i2cSDA, i2cSCL, 400000);
+      byte error, address;
+      int nDevices;
+      s.println("Scanning I2C");
+      s.println("IN219               0x41");
+      s.println("GY-91 modul MPU6500 0x68");
+      s.println("GY-91 modul BMP280  0x76");
+      s.println("BME280              0x77");
+      s.println("BME280 SDO pin direkt felhúzása nélkül azonos a két BME címe!");
+      s.println("");
+      nDevices = 0;
+      for (address = 1; address < 127; address++) {
+        // The i2c_scanner uses the return value of
+        // the Write.endTransmisstion to see if
+        // a device did acknowledge to the address.
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+
+        if (error == 0) {
+          s.print("I2C device found at address 0x");
+          if (address < 16)
+            s.print("0");
+          s.print(address, HEX);
+          s.println("  !");
+
+          nDevices++;
+        } else if (error == 4) {
+          s.print("Unknown error at address 0x");
+          if (address < 16)
+            s.print("0");
+          s.println(address, HEX);
+        }
+      }
+      if (nDevices == 0)
+        s.println("No I2C devices found\n");
+      else
+        s.println("done\n");
+
+
       //twi.begin(i2cSDA, i2cSCL, 400000);
       //s.println("Elsőkör");
       firstRunCore0 = false;
@@ -151,7 +196,17 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sImu) {
         case sRun:
           {
-            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+            accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+            //s.print("a/g:\t");
+            //s.print((float)ax/ 16384.0); s.print("\t");
+            //s.print((float)ay/ 16384.0); s.print("\t");
+            //s.print((float)az/ 16384.0); s.print("\t");
+            //s.print(gx); s.print("\t");
+            //s.print(gy); s.print("\t");
+            //s.println(gz);
+            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {            
+              
+              
               //kvaterniók
               mpu.dmpGetQuaternion(&q, fifoBuffer);
               xSemaphoreTake(xQa, portMAX_DELAY);
@@ -175,9 +230,9 @@ void core0task(void* parameter) {  // a.k.a. loop
               mpu.dmpGetGravity(&gravity, &q);
               mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
               mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-              float Wacc_x = (aaWorld.x * 0.122) / 1000;
-              float Wacc_y = (aaWorld.y * 0.122) / 1000;
-              float Wacc_z = (aaWorld.z * 0.122) / 1000;
+              float Wacc_x = ((float)aaWorld.x / 16384.0);
+              float Wacc_y = ((float)aaWorld.y / 16384.0);
+              float Wacc_z = ((float)aaWorld.z / 16384.0);
               deltaT = 1000.0 / tImuDelay;
 
               velo_x += Wacc_x * deltaT;
@@ -188,6 +243,11 @@ void core0task(void* parameter) {  // a.k.a. loop
               disp_y += velo_y * deltaT;
               disp_z += velo_z * deltaT;
               if (debug) {
+                s.println("Worldaccels");
+                s.println(aaWorld.x);
+                s.println(aaWorld.y);
+                s.println(aaWorld.z);
+                s.println("Displacements");
                 s.println(disp_x);
                 s.println(disp_y);
                 s.println(disp_z);
@@ -204,10 +264,6 @@ void core0task(void* parameter) {  // a.k.a. loop
               xSemaphoreTake(xPosz, portMAX_DELAY);
               Posz = disp_z;
               xSemaphoreGive(xPosz);
-              //s.println("Imu accs:");
-              //s.println(aa.x);
-              //s.println(aa.y);
-              //s.println(aa.z);
             } else {
               if (debug) s.println("imu bajos");
             }
@@ -223,22 +279,22 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sStart:
           {
-            //Wire.begin();
+
             //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
             // initialize device
             mpu.initialize();
-            pinMode(INTERRUPT_PIN, INPUT);
+            accelgyro.initialize();
 
             devStatus = mpu.dmpInitialize();
 
             // supply your own gyro offsets here, scaled for min sensitivity
-            mpu.setXGyroOffset(-153);
-            mpu.setYGyroOffset(-368);
-            mpu.setZGyroOffset(-10);
-            mpu.setXAccelOffset(4328);
-            mpu.setYAccelOffset(4522);
-            mpu.setZAccelOffset(8906);  // 1688 factory default for my test chip
+            mpu.setXGyroOffset(-157);
+            mpu.setYGyroOffset(-377);
+            mpu.setZGyroOffset(-6);
+            mpu.setXAccelOffset(4459);
+            mpu.setYAccelOffset(4615);
+            mpu.setZAccelOffset(23235);  // 1688 factory default for my test chip
 
 
             if (devStatus == 0) {
@@ -447,34 +503,50 @@ void core0task(void* parameter) {  // a.k.a. loop
           {
             sensors_event_t event;
             accel.getEvent(&event);
-            accel_x = event.acceleration.x;
-            accel_y = event.acceleration.y;
-            accel_z = event.acceleration.z;
+            accel_x = (event.acceleration.x);
+            accel_y = (event.acceleration.y);
+            accel_z = (event.acceleration.z);
+            //s.println("X");
+            //s.println(accel_x);
+            //s.println(accel_y);
+            //s.println(accel_z);
             break;
           }
         case sError:
-          { /*
+          { 
             if (millis() - tADXLrestrigger > tADXLrestart) {
               tADXLrestrigger = millis();
               sADXL = sStart;
-            }*/
+            }
             break;
           }
         case sStart:
           {
             if (!accel.begin()) {
-              if (debug) s.println(" ");
+              //s.println("ADXL nem jóó ");
               xSemaphoreTake(xAdxlok, portMAX_DELAY);
               Adxlok = 0;
               xSemaphoreGive(xAdxlok);
               sADXL = sError;
             } else {
+              //s.println("ADXL jóó");
               xSemaphoreTake(xAdxlok, portMAX_DELAY);
               Adxlok = 1;
               xSemaphoreGive(xAdxlok);
               sADXL = sRun;
             }
             break;
+          }
+          case sCalib:
+          {
+            //Hold accelerometer flat to set offsets to 0, 0, and -1g...
+            accel.setTrimOffsets(0, 0, 0);
+            x = accel.getX();
+            y = accel.getY();
+            z = accel.getZ();
+            accel.setTrimOffsets(-(x+2)/4, 
+                       -(y+2)/4, 
+                       -(z-20+2)/4);
           }
         default:
           {  //itt baj van....}
@@ -495,6 +567,10 @@ void core0task(void* parameter) {  // a.k.a. loop
             xSemaphoreTake(xVoltage, portMAX_DELAY);
             Voltage = ina219.getBusVoltage_V();
             xSemaphoreGive(xVoltage);
+            if (debug) {
+              s.println(ina219.getCurrent_mA());
+              s.println(ina219.getBusVoltage_V());
+            }
             break;
           }
         case sError:
