@@ -31,11 +31,11 @@ char getRadio(uint32_t to) {
   }
   buf[b] = '\0';
   // s.println();
-  if (b == 0)
-    // s.printf("%08d*** Timeout\n\n", micros() / 1000);
-  else
-    // s.printf("%08d ANS %s\n", micros() / 1000, buf);
-    return (b);
+  // if (b == 0)
+  //   s.printf("%08d*** Timeout\n\n", micros() / 1000);
+  // else
+  //   s.printf("%08d ANS %s\n", micros() / 1000, buf);
+  return (b);
 }
 
 char putRadio(const char *cmd, uint32_t to) {

@@ -271,7 +271,7 @@ void core1task(void* parameter) {
                 case '2': gsTO = 8; break;
                 case '3': newFreq = 8681; break;
                 case '4': newFreq = 8690; break;
-                default: s.println("nemáááá...");
+                default: ;// s.println("nemáááá...")
               }
             }
             //////////////////////////////////////////////////////////////////////////////////////
@@ -323,7 +323,7 @@ void core1task(void* parameter) {
                       }
                     }
                   } else {
-                    s.printf("CHK NOK 0x%02x expected, got 0x%02x\n", chk, buf[r]);
+                    // s.printf("CHK NOK 0x%02x expected, got 0x%02x\n", chk, buf[r]);
                   }
                 }
                 rxBufIdx = 0;
@@ -357,7 +357,7 @@ void core1task(void* parameter) {
               if (gsTO < 8) gsTO++;
             }
             if (gsTO == 8 && sfNow != 10) {
-              s.println("SF to 10");
+              // s.println("SF to 10");
               putRadio("radio set sf sf10", 20000);
               while (lora.available()) lora.read();
               // s.println(buf);
@@ -365,7 +365,7 @@ void core1task(void* parameter) {
               commLayer = 0;
             }
             if (gsTO == 4 && sfNow != 7) {
-              s.println("SF to 7");
+              // s.println("SF to 7");
               putRadio("radio set sf sf7", 20000);
               while (lora.available()) lora.read();
               // s.println(buf);
@@ -488,9 +488,9 @@ void core1task(void* parameter) {
             putRadio("radio set cr 4/5", 10000);
             byte b = putRadio("radio set crc off", 10000);
             if (b == 0) {
-              s.println("LOR NOK");
+              // s.println("LOR NOK");
             } else {
-              s.println("LOR OK");
+              // s.println("LOR OK");
             }
             tLoraTrigger = millis();
             sLora = sRun;
