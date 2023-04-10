@@ -26,7 +26,7 @@ TaskHandle_t hCore0task;
 #include <Adafruit_BME280.h>
 #include <Adafruit_INA219.h>
 
-bool debug = 0;
+bool debug = 1;
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 #include "Wire.h"
@@ -66,7 +66,7 @@ float velo_x = 0;
 float velo_y = 0;
 float velo_z = 0;  //imu számoláshoz sebesség
 
-float deltaT;  //imu integráláshoz eltelt idő
+float deltaT = 0;  //imu integráláshoz eltelt idő
 
 float accel_x, accel_y, accel_z;  //adxl mérések ide jönnek
 float xx, yy, zz;                 //adxl calibrated
@@ -206,8 +206,6 @@ void core0task(void* parameter) {  // a.k.a. loop
             //s.print(gy); s.print("\t");
             //s.println(gz);
             if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-
-
               //kvaterniók
               mpu.dmpGetQuaternion(&q, fifoBuffer);
               xSemaphoreTake(xQa, portMAX_DELAY);
@@ -231,23 +229,23 @@ void core0task(void* parameter) {  // a.k.a. loop
               mpu.dmpGetGravity(&gravity, &q);
               mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
               mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-              float Wacc_x = ((float)aaWorld.x / 16384.0);
-              float Wacc_y = ((float)aaWorld.y / 16384.0);
-              float Wacc_z = ((float)aaWorld.z / 16384.0);
-              deltaT = 1000.0 / tImuDelay;
+              float Wacc_x = (((float)aaWorld.x / 16384.0)*9.81);
+              float Wacc_y = (((float)aaWorld.y / 16384.0)*9.81);
+              float Wacc_z = (((float)aaWorld.z / 16384.0)*9.81);
+              deltaT = millis() - deltaT;
 
-              velo_x += Wacc_x * deltaT;
-              velo_y += Wacc_y * deltaT;
-              velo_z += Wacc_z * deltaT;
+              velo_x += Wacc_x * (1000/deltaT);
+              velo_y += Wacc_y * (1000/deltaT);
+              velo_z += Wacc_z * (1000/deltaT);
 
-              disp_x += velo_x * deltaT;
-              disp_y += velo_y * deltaT;
-              disp_z += velo_z * deltaT;
+              disp_x += velo_x * (1000/deltaT);
+              disp_y += velo_y * (1000/deltaT);
+              disp_z += velo_z * (1000/deltaT);
               if (debug) {
                 s.println("Worldaccels");
-                s.println(aaWorld.x);
-                s.println(aaWorld.y);
-                s.println(aaWorld.z);
+                s.println(Wacc_x);
+                s.println(Wacc_y);
+                s.println(Wacc_z);
                 s.println("Displacements");
                 s.println(disp_x);
                 s.println(disp_y);
@@ -572,8 +570,8 @@ void core0task(void* parameter) {  // a.k.a. loop
             Voltage = ina219.getBusVoltage_V();
             xSemaphoreGive(xVoltage);
             if (debug) {
-              s.println(ina219.getCurrent_mA());
-              s.println(ina219.getBusVoltage_V());
+              //s.println(ina219.getCurrent_mA());
+              //s.println(ina219.getBusVoltage_V());
             }
             break;
           }
@@ -642,6 +640,10 @@ void core0task(void* parameter) {  // a.k.a. loop
 
           xSemaphoreTake(xTemp, portMAX_DELAY);
           Temp = (BMPtemp + DStemp) / 2;
+          xSemaphoreGive(xTemp);
+        } else {
+          xSemaphoreTake(xTemp, portMAX_DELAY);
+          Temp = 16.0;  //Ha semmi se jó
           xSemaphoreGive(xTemp);
         }
       }
