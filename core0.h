@@ -68,7 +68,8 @@ float velo_z = 0;  //imu számoláshoz sebesség
 
 float deltaT;  //imu integráláshoz eltelt idő
 
-float accel_x, accel_y, accel_z;     //adxl mérések ide jönnek
+float accel_x, accel_y, accel_z;  //adxl mérések ide jönnek
+float xx, yy, zz;                 //adxl calibrated
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
@@ -77,7 +78,7 @@ int16_t gx, gy, gz;
 float busvoltage = 0;
 float current_mA = 0;
 
-int16_t x, y, z; //adxl kalibrációhoz
+int16_t x, y, z;  //adxl kalibrációhoz
 
 float DStemp, BMEtemp, BMPtemp;  //Méréseknek
 float BMEpress, BMPpress;
@@ -204,9 +205,9 @@ void core0task(void* parameter) {  // a.k.a. loop
             //s.print(gx); s.print("\t");
             //s.print(gy); s.print("\t");
             //s.println(gz);
-            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {            
-              
-              
+            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+
+
               //kvaterniók
               mpu.dmpGetQuaternion(&q, fifoBuffer);
               xSemaphoreTake(xQa, portMAX_DELAY);
@@ -513,7 +514,7 @@ void core0task(void* parameter) {  // a.k.a. loop
             break;
           }
         case sError:
-          { 
+          {
             if (millis() - tADXLrestrigger > tADXLrestart) {
               tADXLrestrigger = millis();
               sADXL = sStart;
@@ -537,16 +538,19 @@ void core0task(void* parameter) {  // a.k.a. loop
             }
             break;
           }
-          case sCalib:
+        case sCalib:
           {
             //Hold accelerometer flat to set offsets to 0, 0, and -1g...
             accel.setTrimOffsets(0, 0, 0);
-            x = accel.getX();
-            y = accel.getY();
-            z = accel.getZ();
-            accel.setTrimOffsets(-(x+2)/4, 
-                       -(y+2)/4, 
-                       -(z-20+2)/4);
+            xx = (float)accel.getX();
+            yy = (float)accel.getY();
+            zz = (float)accel.getZ();
+            for (int i = 0; i < 1000; i++) {
+              xx = xx * 0.99 + 0.01 * (float)accel.getX();
+              yy = yy * 0.99 + 0.01 * (float)accel.getY();
+              zz = zz * 0.99 + 0.01 * (float)accel.getZ();
+              delay(5);
+            }
           }
         default:
           {  //itt baj van....}
@@ -653,7 +657,11 @@ void core0task(void* parameter) {  // a.k.a. loop
           xSemaphoreGive(xPressure);
         } else if (!Bmeok && Bmpok) {
           xSemaphoreTake(xPressure, portMAX_DELAY);
-          Pressure = BMEpress;
+          Pressure = BMPpress;
+          xSemaphoreGive(xPressure);
+        } else {
+          xSemaphoreTake(xPressure, portMAX_DELAY);
+          Pressure = 100000.0;  //Ha semmi se jó
           xSemaphoreGive(xPressure);
         }
       }
