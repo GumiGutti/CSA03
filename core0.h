@@ -151,7 +151,7 @@ void core0task(void* parameter) {  // a.k.a. loop
       byte error, address;
       int nDevices;
       s.println("Scanning I2C");
-      s.println("IN219               0x41");
+      s.println("IN219               0x40");
       s.println("GY-91 modul MPU6500 0x68");
       s.println("GY-91 modul BMP280  0x76");
       s.println("BME280              0x77");
