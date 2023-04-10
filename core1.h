@@ -245,7 +245,7 @@ void core1task(void* parameter) {
         addSD(c);
         sprintf(c, " %8.1f %6.2f", pressure, temp);
         addSD(c);
-        sprintf(c, " %8.5f %8.5f", lat, lon);
+        sprintf(c, " %10.7f %10.7f", lat, lon);
         addSD(c);
         sprintf(c, " %8.3f", alt);
         addSD(c);
@@ -271,7 +271,7 @@ void core1task(void* parameter) {
                 case '2': gsTO = 8; break;
                 case '3': newFreq = 8681; break;
                 case '4': newFreq = 8690; break;
-                default: ;// s.println("nemáááá...")
+                default:;  // s.println("nemáááá...")
               }
             }
             //////////////////////////////////////////////////////////////////////////////////////
@@ -384,8 +384,8 @@ void core1task(void* parameter) {
             uint32_t txID = millis();
             if (commLayer > 0) {
               // status field
-              addByteToTxBuff(sta / 16);
-              addByteToTxBuff(sta % 16);
+              addByteToTxBuff(sta % 256);
+              addByteToTxBuff(sta / 256);
             }
             // message unique ID
             addByteToTxBuff((char)(txID >> 16) & 0xff);
@@ -393,6 +393,8 @@ void core1task(void* parameter) {
             addByteToTxBuff((char)(txID >> 0) & 0xff);
             if (commLayer > 0) {
               // relative position to GS
+              posx = -100.0;
+              posy = 100.0;
               addByteToTxBuff(((int16_t)(posx * 2)) >> 8);
               addByteToTxBuff(((int16_t)(posx * 2)) & 0xff);
               addByteToTxBuff(((int16_t)(posy * 2)) >> 8);
@@ -412,9 +414,10 @@ void core1task(void* parameter) {
               // SNR
               addByteToTxBuff((char)snr);
 
+              pressure = 99000.0; // ***
               // absolute pressure
-              addByteToTxBuff(((char)(pressure - 60000.0)) >> 8);
-              addByteToTxBuff(((char)(pressure - 60000.0)) & 0xff);
+              addByteToTxBuff(((uint16_t)(pressure - 60000.0)) >> 8);
+              addByteToTxBuff(((uint16_t)(pressure - 60000.0)) & 0xff);
 
               // temperature
               uint16_t tem = (uint16_t)((273.15 + temp) * 100.0);
@@ -429,8 +432,8 @@ void core1task(void* parameter) {
             addByteToTxBuff(loi >> 8);
             addByteToTxBuff(loi & 0xff);
             if (commLayer > 0) {
-              addByteToTxBuff(((uint16_t)(alt * 10.0)) >> 8);
-              addByteToTxBuff(((uint16_t)(alt * 10.0)) & 0xff);
+              addByteToTxBuff(((uint16_t)(alt * 10.0)) / 256);
+              addByteToTxBuff(((uint16_t)(alt * 10.0)) % 256);
 
               // current
               addByteToTxBuff((char)(current / 4.0));
@@ -439,7 +442,7 @@ void core1task(void* parameter) {
               addByteToTxBuff((char)(energy * 2));
 
               // voltage
-              addByteToTxBuff((char)((voltage-2.0)*100.0));
+              addByteToTxBuff((char)((voltage - 2.0) * 100.0));
             }
             addByteToTxBuff(chk);
             addToTxBuff(" 1");
