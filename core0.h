@@ -36,7 +36,6 @@ Adafruit_INA219 ina219;
 MPU6050 mpu;
 MPU6050 accelgyro;
 Adafruit_BMP280 bmp;
-TwoWire twi(0);
 OneWire ds(ds18Pin);
 Adafruit_BME280 bme;
 
@@ -122,7 +121,7 @@ enum taskState { sRun,
                  sError,
                  sStart,
                  sCalib };
-taskState sImu = sError;
+taskState sImu = sStart;
 taskState sBME = sStart;
 taskState sDallas = sStart;
 taskState sBMP = sStart;
@@ -185,9 +184,6 @@ void core0task(void* parameter) {  // a.k.a. loop
         s.println("No I2C devices found\n");
       else
         s.println("done\n");
-
-
-      //twi.begin(i2cSDA, i2cSCL, 400000);
       //s.println("Elsőkör");
       firstRunCore0 = false;
     }
@@ -229,18 +225,18 @@ void core0task(void* parameter) {  // a.k.a. loop
               mpu.dmpGetGravity(&gravity, &q);
               mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
               mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-              float Wacc_x = (((float)aaWorld.x / 16384.0)*9.81);
-              float Wacc_y = (((float)aaWorld.y / 16384.0)*9.81);
-              float Wacc_z = (((float)aaWorld.z / 16384.0)*9.81);
+              float Wacc_x = (((float)aaWorld.x / 16384.0) * 9.81);
+              float Wacc_y = (((float)aaWorld.y / 16384.0) * 9.81);
+              float Wacc_z = (((float)aaWorld.z / 16384.0) * 9.81);
               deltaT = millis() - deltaT;
 
-              velo_x += Wacc_x * (1000/deltaT);
-              velo_y += Wacc_y * (1000/deltaT);
-              velo_z += Wacc_z * (1000/deltaT);
+              velo_x += Wacc_x * (1000 / deltaT);
+              velo_y += Wacc_y * (1000 / deltaT);
+              velo_z += Wacc_z * (1000 / deltaT);
 
-              disp_x += velo_x * (1000/deltaT);
-              disp_y += velo_y * (1000/deltaT);
-              disp_z += velo_z * (1000/deltaT);
+              disp_x += velo_x * (1000 / deltaT);
+              disp_y += velo_y * (1000 / deltaT);
+              disp_z += velo_z * (1000 / deltaT);
               if (debug) {
                 s.println("Worldaccels");
                 s.println(Wacc_x);
