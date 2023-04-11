@@ -26,7 +26,7 @@ TaskHandle_t hCore0task;
 #include <Adafruit_BME280.h>
 #include <Adafruit_INA219.h>
 
-bool debug = 1;
+bool debug = 0;
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 #include "Wire.h"
@@ -115,6 +115,8 @@ uint32_t tADXLrestart = 5000;
 
 uint32_t tINAdelay = 100;
 uint32_t tINAtrigger = 0;
+uint32_t tINArestart = 5000;
+uint32_t tINArestrigger = 0;
 
 
 enum taskState { sRun,
@@ -397,6 +399,16 @@ void core0task(void* parameter) {  // a.k.a. loop
         case sRun:
           {
             BMPtemp = bmp.readTemperature();
+            if (-6.0 < BMPtemp < 35.0) {
+              xSemaphoreTake(xBmpok, portMAX_DELAY);
+              Bmpok = 1;
+              xSemaphoreGive(xBmpok);
+            } else {
+              xSemaphoreTake(xBmpok, portMAX_DELAY);
+              Bmpok = 0;
+              xSemaphoreGive(xBmpok);
+            }
+            break;
             BMPpress = bmp.readPressure();
             break;
           }
@@ -451,6 +463,16 @@ void core0task(void* parameter) {  // a.k.a. loop
             xSemaphoreGive(xHumidity);
 
             BMEtemp = bme.readTemperature();
+            if (-6.0 < BMEtemp < 35.0) {
+              xSemaphoreTake(xBmeok, portMAX_DELAY);
+              Bmeok = 1;
+              xSemaphoreGive(xBmeok);
+            } else {
+              xSemaphoreTake(xBmeok, portMAX_DELAY);
+              Bmeok = 0;
+              xSemaphoreGive(xBmeok);
+            }
+            break;
             BMEpress = bme.readPressure();
             break;
           }
@@ -573,6 +595,10 @@ void core0task(void* parameter) {  // a.k.a. loop
           }
         case sError:
           {
+            if (millis() - tINArestrigger > tINArestart) {
+              tINArestrigger = millis();
+              sINA = sStart;
+            }
             break;
           }
         case sStart:
@@ -603,7 +629,7 @@ void core0task(void* parameter) {  // a.k.a. loop
       if (true) {                      // Temperature fusion
         if (Dsok && Bmeok && Bmpok) {  // Ha minden ok
           xSemaphoreTake(xTemp, portMAX_DELAY);
-          Temp = (BMEtemp + DStemp + BMPtemp) / 3;
+          Temp = DStemp;
           xSemaphoreGive(xTemp);
 
         } else if (!Bmpok && !Bmeok) {  //Ha 2 kiesik a 3-ból mindig a fennmaradót vegye alapul
@@ -625,7 +651,7 @@ void core0task(void* parameter) {  // a.k.a. loop
         } else if (Dsok && Bmeok && !Bmpok) {  //Ha egy kiesik a 3-ból mindig a másik 2 számtani közepét vegye
 
           xSemaphoreTake(xTemp, portMAX_DELAY);
-          Temp = (BMEtemp + DStemp) / 2;
+          Temp = DStemp;
           xSemaphoreGive(xTemp);
         } else if (!Dsok && Bmeok && Bmpok) {
 
@@ -635,7 +661,7 @@ void core0task(void* parameter) {  // a.k.a. loop
         } else if (Dsok && !Bmeok && Bmpok) {
 
           xSemaphoreTake(xTemp, portMAX_DELAY);
-          Temp = (BMPtemp + DStemp) / 2;
+          Temp = DStemp;
           xSemaphoreGive(xTemp);
         } else {
           xSemaphoreTake(xTemp, portMAX_DELAY);
