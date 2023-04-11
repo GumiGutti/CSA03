@@ -18,6 +18,7 @@ TaskHandle_t hCore0task;
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Wire.h>
+#include <MPU6500_WE.h>
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 #include <Adafruit_Sensor.h>
@@ -38,6 +39,7 @@ MPU6050 accelgyro;
 Adafruit_BMP280 bmp;
 OneWire ds(ds18Pin);
 Adafruit_BME280 bme;
+MPU6500_WE myMPU6500 = MPU6500_WE(MPU6500_ADDR);
 
 SPIClass hspi(HSPI);
 Adafruit_ADXL375 accel = Adafruit_ADXL375(accCS, &hspi, 12345);
@@ -65,13 +67,14 @@ float velo_x = 0;
 float velo_y = 0;
 float velo_z = 0;  //imu számoláshoz sebesség
 
-float deltaT = 0;  //imu integráláshoz eltelt idő
+unsigned long deltaT = 0;  //imu integráláshoz eltelt idő
+unsigned long current = 0;
 
 float accel_x, accel_y, accel_z;  //adxl mérések ide jönnek
 float xx, yy, zz;                 //adxl calibrated
 
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
+float ax, ay, az;     //imu gyorsulások m/s2 ben
+float gyx, gyy, gyz;  //imu gyro értékek deg/sec ben
 
 //ina mérések ide jönnek
 float busvoltage = 0;
@@ -197,74 +200,43 @@ void core0task(void* parameter) {  // a.k.a. loop
       switch (sImu) {
         case sRun:
           {
-            accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-            //s.print("a/g:\t");
-            //s.print((float)ax/ 16384.0); s.print("\t");
-            //s.print((float)ay/ 16384.0); s.print("\t");
-            //s.print((float)az/ 16384.0); s.print("\t");
-            //s.print(gx); s.print("\t");
-            //s.print(gy); s.print("\t");
-            //s.println(gz);
-            if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-              //kvaterniók
-              mpu.dmpGetQuaternion(&q, fifoBuffer);
-              xSemaphoreTake(xQa, portMAX_DELAY);
-              Qa = q.w;
-              xSemaphoreGive(xQa);
+            xyzFloat gValue = myMPU6500.getGValues();
+            xyzFloat gyr = myMPU6500.getGyrValues();
+            ax = (gValue.x) * 9.81;
+            ay = (gValue.y) * 9.81;
+            az = (gValue.z) * 9.81;
+            gyx = gyr.x;
+            gyy = gyr.y;
+            gyz = gyr.z;
 
-              xSemaphoreTake(xQi, portMAX_DELAY);
-              Qi = q.x;
-              xSemaphoreGive(xQi);
+            xSemaphoreTake(xQi, portMAX_DELAY);
+            Qi = gyx;
+            xSemaphoreGive(xQi);
 
-              xSemaphoreTake(xQj, portMAX_DELAY);
-              Qj = q.y;
-              xSemaphoreGive(xQj);
+            xSemaphoreTake(xQj, portMAX_DELAY);
+            Qj = gyy;
+            xSemaphoreGive(xQj);
 
-              xSemaphoreTake(xQk, portMAX_DELAY);
-              Qk = q.z;
-              xSemaphoreGive(xQk);
+            xSemaphoreTake(xQk, portMAX_DELAY);
+            Qk = gyz;
+            xSemaphoreGive(xQk);
 
-              //Worldaccel
-              mpu.dmpGetAccel(&aa, fifoBuffer);
-              mpu.dmpGetGravity(&gravity, &q);
-              mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-              mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-              float Wacc_x = (((float)aaWorld.x / 16384.0) * 9.81);
-              float Wacc_y = (((float)aaWorld.y / 16384.0) * 9.81);
-              float Wacc_z = (((float)aaWorld.z / 16384.0) * 9.81);
-              deltaT = millis() - deltaT;
+            xSemaphoreTake(xPosx, portMAX_DELAY);
+            Posx = gyx;
+            xSemaphoreGive(xPosx);
 
-              velo_x += Wacc_x * (1000 / deltaT);
-              velo_y += Wacc_y * (1000 / deltaT);
-              velo_z += Wacc_z * (1000 / deltaT);
+            xSemaphoreTake(xPosy, portMAX_DELAY);
+            Posy = gyx;
+            xSemaphoreGive(xQy);
 
-              disp_x += velo_x * (1000 / deltaT);
-              disp_y += velo_y * (1000 / deltaT);
-              disp_z += velo_z * (1000 / deltaT);
-              if (debug) {
-                s.println("Worldaccels");
-                s.println(Wacc_x);
-                s.println(Wacc_y);
-                s.println(Wacc_z);
-                s.println("Displacements");
-                s.println(disp_x);
-                s.println(disp_y);
-                s.println(disp_z);
-              }
+            xSemaphoreTake(xPosz, portMAX_DELAY);
+            Posz = gyx;
+            xSemaphoreGive(xPosy);
 
-              xSemaphoreTake(xPosx, portMAX_DELAY);
-              Posx = disp_x;
-              xSemaphoreGive(xPosx);
-
-              xSemaphoreTake(xPosy, portMAX_DELAY);
-              Posy = disp_y;
-              xSemaphoreGive(xPosy);
-
-              xSemaphoreTake(xPosz, portMAX_DELAY);
-              Posz = disp_z;
-              xSemaphoreGive(xPosz);
-            } else {
-              if (debug) s.println("imu bajos");
+            if (debug) {
+              s.print(ax); s.print("\t");
+              s.print(ay); s.print("\t");
+              s.print(az); s.println("\t");
             }
             break;
           }
@@ -276,58 +248,29 @@ void core0task(void* parameter) {  // a.k.a. loop
             }
             break;
           }
+        case sCalib:
+          {
+            myMPU6500.autoOffsets();
+            if (debug) s.println("imu kalibrálva");
+            sImu = sRun;
+            break;
+          }
         case sStart:
           {
-
-            //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-
-            // initialize device
-            mpu.initialize();
-            accelgyro.initialize();
-
-            devStatus = mpu.dmpInitialize();
-
-            // supply your own gyro offsets here, scaled for min sensitivity
-            mpu.setXGyroOffset(-157);
-            mpu.setYGyroOffset(-377);
-            mpu.setZGyroOffset(-6);
-            mpu.setXAccelOffset(4459);
-            mpu.setYAccelOffset(4615);
-            mpu.setZAccelOffset(23235);  // 1688 factory default for my test chip
-
-
-            if (devStatus == 0) {
-              // Calibration Time: generate offsets and calibrate our MPU6050
-              mpu.CalibrateAccel(6);
-              mpu.CalibrateGyro(6);
-              mpu.PrintActiveOffsets();
-              mpu.setDMPEnabled(true);
-
-              // enable Arduino interrupt detection
-              digitalPinToInterrupt(INTERRUPT_PIN);
-              attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
-              mpuIntStatus = mpu.getIntStatus();
-
-              // set our DMP Ready flag so the main loop() function knows it's okay to use it
-              dmpReady = true;
-
-              // get expected DMP packet size for later comparison
-              packetSize = mpu.dmpGetFIFOPacketSize();
-              xSemaphoreTake(xImuok, portMAX_DELAY);
-              Imuok = 1;
-              xSemaphoreGive(xImuok);
-              sImu = sRun;
-            } else {
-              xSemaphoreTake(xImuok, portMAX_DELAY);
-              Imuok = 0;
-              xSemaphoreGive(xImuok);
-              if (debug) {
-                s.print(F("DMP Initialization failed (code "));
-                s.print(devStatus);
-                s.println(F(")"));
-              }
+            if (!myMPU6500.init()) {
+              if (debug) s.println("imu bajos");
               sImu = sError;
+            } else {
+              if (debug) s.println("imu fasza");
             }
+            myMPU6500.enableGyrDLPF();
+            myMPU6500.setGyrDLPF(MPU6500_DLPF_6);
+            myMPU6500.setSampleRateDivider(5);
+            myMPU6500.setGyrRange(MPU6500_GYRO_RANGE_2000);
+            myMPU6500.setAccRange(MPU6500_ACC_RANGE_16G);
+            myMPU6500.enableAccDLPF(true);
+            myMPU6500.setAccDLPF(MPU6500_DLPF_6);
+            sImu = sRun;
             break;
           }
         default:
@@ -590,8 +533,9 @@ void core0task(void* parameter) {  // a.k.a. loop
             Voltage = ina219.getBusVoltage_V();
             xSemaphoreGive(xVoltage);
             if (debug) {
-              //s.println(ina219.getCurrent_mA());
-              //s.println(ina219.getBusVoltage_V());
+              s.println("Ina äram és fesz:");
+              s.println(ina219.getCurrent_mA());
+              s.println(ina219.getBusVoltage_V());
             }
             break;
           }

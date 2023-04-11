@@ -130,5 +130,6 @@ float voltage;
 
 #define ICACHE_RAM_ATTR
 #define SEALEVELPRESSURE_HPA (1013.25)
+#define MPU6500_ADDR 0x68
 
 #endif  //  _CANSAT03_H_
