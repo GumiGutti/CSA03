@@ -141,8 +141,7 @@ void core1task(void* parameter) {
     missionPhase = 0;
     if (millis() - tLoraTrigger > tLoraDelay) {
       tLoraTrigger = millis();
-      if (1) {
-        // vault handling: window << + >> data (mutex) | sdbuffer töltés, sdbuffer size check
+      if (1) {  // vault handling: window << + >> data (mutex) | sdbuffer töltés, sdbuffer size check
         // update data from window
         //
         // core0 >> core1
@@ -223,11 +222,10 @@ void core1task(void* parameter) {
         Missionphase = missionPhase;
         xSemaphoreGive(xMissionphase);
       }
-      ringSend(256);
       uint16_t sta = (gpsNoTO << 0) | (gpsLockOK << 1) | (gpsTimeOK << 2) | (bmpOK << 3) | (bmeOK << 4)
                      | (adxlOK << 5) | (imuOK << 6) | (inaOK << 7) | (camOK << 8)
                      | (sdcardOK << 9) | (bufferOK << 10) | (dsOK << 11) | (dgpsOK << 12) | (missionPhase << 13);
-      if (1) {
+      if (1) { // SD card writes
         sprintf(c, "%10.3lf", tLoraTrigger / 1000.0);
         addSD(c);
 
@@ -249,16 +247,15 @@ void core1task(void* parameter) {
         addSD(c);
         sprintf(c, " %8.3f", alt);
         addSD(c);
+        sprintf(c, " %5.1f", humidity);
+        addSD(c);
         sprintf(c, " %6.2f", current);
         addSD(c);
         sprintf(c, " %6.2f", voltage);
         addSD(c);
         sprintf(c, " %6.1f", energy);
         addSD(c);
-
-        // sprintf(c, "%d", (byte));
-        // addSD(c);
-        addSD("\n");
+        addSD("\0");
         // end of window exchange
       }
       switch (sLora) {
@@ -414,7 +411,6 @@ void core1task(void* parameter) {
               // SNR
               addByteToTxBuff((char)snr);
 
-              pressure = 99000.0; // ***
               // absolute pressure
               addByteToTxBuff(((uint16_t)(pressure - 60000.0)) >> 8);
               addByteToTxBuff(((uint16_t)(pressure - 60000.0)) & 0xff);
@@ -475,7 +471,7 @@ void core1task(void* parameter) {
             putRadio("sys reset", 1000000);
             delay(5);
             while (lora.available()) {  // empty rx buffer
-              s.write((byte)lora.read());
+              lora.read();
               delay(1);
             }
             putRadio("radio set sf sf10", 10000);
@@ -580,6 +576,7 @@ void core1task(void* parameter) {
         }  // end of gpsParse
       }    // gps rx buffer empty
       gpsNoTO = (millis() - tLastGps > 1100) ? 0 : 1;
+
       // s.printf("Time %12.2f\tLat %9.6f\t Lon %9.6f\tAlt %5.2f\tTime %1d\tLock %1d\tDGPS %1d\n", gpsTim, lat, lon, alt, gpsTimeOK, gpsLockOK, dgpsOK);
     }  // end of loratrigger
     vTaskDelay(1);

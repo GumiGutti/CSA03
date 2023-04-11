@@ -23,12 +23,12 @@ void tailPP() {
 
 void ringSend(uint32_t chunkSize) {
   if (ringBytes() >= chunkSize) {
-    s.write('0');
+    s.write(1);
     while (chunkSize--) {
       s.write(sdring[sdtail]);
       tailPP();
     }
-    s.write('1');
+    s.write(2);
   }
 }
 

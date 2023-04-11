@@ -14,8 +14,9 @@ HardwareSerial gps(2);   // use UART2
 void setup() {
 
   s.begin(115200);
-  size_t dummy = s.setRxBufferSize(2048);
-  size_t dummy = s.setTxBufferSize(2048);
+  size_t dummy;
+  dummy = s.setRxBufferSize(2048);
+  dummy = s.setTxBufferSize(2048);
   // s.println();
   // s.println("CANSAT boot....");
 
