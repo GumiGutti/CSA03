@@ -22,23 +22,24 @@ void tailPP() {
 }
 
 void ringSend(uint32_t chunkSize) {
-  if (ringBytes() >= chunkSize) {
-    s.write(1);
-    while (chunkSize--) {
-      s.write(sdring[sdtail]);
-      tailPP();
-    }
-    s.write(2);
-  }
+  // if (ringBytes() >= chunkSize) {
+  //   s.write(1);
+  //   while (chunkSize--) {
+  //     s.write(sdring[sdtail]);
+  //     tailPP();
+  //   }
+  //   s.write(2);
+  // }
 }
 
 void addSD(char* karcsi) {
-  if (ringFree() > strlen(karcsi)) {
-    while (*karcsi) {
-      sdring[sdhead] = *karcsi;
-      karcsi++;
-      headPP();
-    }
-  } else
-    bufferOK = 0;
+  s.print(karcsi);
+  // if (ringFree() > strlen(karcsi)) {
+  //   while (*karcsi) {
+  //     sdring[sdhead] = *karcsi;
+  //     karcsi++;
+  //     headPP();
+  //   }
+  // } else
+  //   bufferOK = 0;
 }

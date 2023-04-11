@@ -222,6 +222,7 @@ void core1task(void* parameter) {
         Missionphase = missionPhase;
         xSemaphoreGive(xMissionphase);
       }
+      ringSend(256);
       uint16_t sta = (gpsNoTO << 0) | (gpsLockOK << 1) | (gpsTimeOK << 2) | (bmpOK << 3) | (bmeOK << 4)
                      | (adxlOK << 5) | (imuOK << 6) | (inaOK << 7) | (camOK << 8)
                      | (sdcardOK << 9) | (bufferOK << 10) | (dsOK << 11) | (dgpsOK << 12) | (missionPhase << 13);
@@ -255,7 +256,7 @@ void core1task(void* parameter) {
         addSD(c);
         sprintf(c, " %6.1f", energy);
         addSD(c);
-        addSD("\0");
+        addSD("\n");
         // end of window exchange
       }
       switch (sLora) {
@@ -476,7 +477,7 @@ void core1task(void* parameter) {
             }
             putRadio("radio set sf sf10", 10000);
             char fc[40];
-            sprintf(fc, "radio set freq %4d00000", freqNow);
+            // sprintf(fc, "radio set freq %4d00000", freqNow);
             s.println(fc);
             putRadio(fc, 10000);
             // s.println(buf);
