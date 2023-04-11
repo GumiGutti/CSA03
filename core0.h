@@ -150,6 +150,7 @@ void core0task(void* parameter) {  // a.k.a. loop
   for (;;) {
     if (firstRunCore0) {
       Wire.begin(i2cSDA, i2cSCL, 400000);
+      /*
       byte error, address;
       int nDevices;
       s.println("Scanning I2C");
@@ -187,6 +188,7 @@ void core0task(void* parameter) {  // a.k.a. loop
       else
         s.println("done\n");
       //s.println("Elsőkör");
+      */
       firstRunCore0 = false;
     }
 
