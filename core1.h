@@ -131,8 +131,8 @@ void core1task(void* parameter) {
       dummy = lora.setRxBufferSize(2048);
       tLastRxLora = millis();
       gsTO = 8;
-      commLayer = 0;
-      sfNow = 10;
+      commLayer = 2;
+      sfNow = 8;
       freqNow = 8667;  // kHz - EEPROM-ból
       newFreq = freqNow;
     }
@@ -141,6 +141,7 @@ void core1task(void* parameter) {
     missionPhase = 0;
     if (millis() - tLoraTrigger > tLoraDelay) {
       tLoraTrigger = millis();
+      uint32_t t0 = millis();
       if (1) {  // vault handling: window << + >> data (mutex) | sdbuffer töltés, sdbuffer size check
         // update data from window
         //
@@ -222,11 +223,15 @@ void core1task(void* parameter) {
         Missionphase = missionPhase;
         xSemaphoreGive(xMissionphase);
       }
+      // s.printf("%6d semaphores\n", millis() - t0);
+      // t0 = millis();
       ringSend(256);
+      // s.printf("%6d ringSend\n", millis() - t0);
+      // t0 = millis();
       uint16_t sta = (gpsNoTO << 0) | (gpsLockOK << 1) | (gpsTimeOK << 2) | (bmpOK << 3) | (bmeOK << 4)
                      | (adxlOK << 5) | (imuOK << 6) | (inaOK << 7) | (camOK << 8)
                      | (sdcardOK << 9) | (bufferOK << 10) | (dsOK << 11) | (dgpsOK << 12) | (missionPhase << 13);
-      if (1) { // SD card writes
+      if (1) {  // SD card writes
         sprintf(c, "%10.3lf", tLoraTrigger / 1000.0);
         addSD(c);
 
@@ -259,6 +264,9 @@ void core1task(void* parameter) {
         addSD("\n");
         // end of window exchange
       }
+      // s.printf("%6d SD write\n", millis() - t0);
+      // t0 = millis();
+
       switch (sLora) {
         case sRun:
           {  // tchk start
@@ -275,6 +283,7 @@ void core1task(void* parameter) {
             //////////////////////////////////////////////////////////////////////////////////////
             while (lora.available()) {
               char c = lora.read();
+              s.write(c);
               if (rxBufIdx > bufSize - 1) {
                 rxBufIdx = 0;
               }
@@ -285,6 +294,8 @@ void core1task(void* parameter) {
                 rxBufIdx++;
               }
             }
+            // s.printf("%6d lora buffer read\n", millis() - t0);
+            // t0 = millis();
             putRadio("radio rxstop", 100000);
             // lora PARSE
             if (loraParse) {
@@ -331,15 +342,19 @@ void core1task(void* parameter) {
                 rxBufIdx = 0;
               }
             }
+            // s.printf("%6d lora parse\n", millis() - t0);
+            // t0 = millis();
             putRadio("radio get snr", 20000);
             snr = (int16_t)atoi(buf);
             putRadio("radio get pktrssi", 20000);
             rssi = (int16_t)atoi(buf);
+            // s.printf("%6d lora get rssi\n", millis() - t0);
+            // t0 = millis();
 
             //////////////////////////////////////////////////////////////////////////////////////
             if (newFreq != freqNow) {
               char fc[40];
-              if ((newFreq > 8670) && (newFreq < 8700)) {
+              if ((newFreq > 8650) && (newFreq < 8800)) {
                 sprintf(fc, "radio set freq %4d00000", newFreq);
                 // s.println(fc);
                 putRadio(fc, 10000);
@@ -349,27 +364,32 @@ void core1task(void* parameter) {
                 freqNow = newFreq;
               }
             }
+            // s.printf("%6d lora freq change\n", millis() - t0);
+            // t0 = millis();
 
-            if (millis() - tLastRxLora > tLoraDelay) {
-              tLastRxLora = millis();
-              if (gsTO < 8) gsTO++;
-            }
-            if (gsTO == 8 && sfNow != 10) {
-              // s.println("SF to 10");
-              putRadio("radio set sf sf10", 20000);
-              while (lora.available()) lora.read();
-              // s.println(buf);
-              sfNow = 10;
-              commLayer = 0;
-            }
-            if (gsTO == 4 && sfNow != 7) {
-              // s.println("SF to 7");
-              putRadio("radio set sf sf7", 20000);
-              while (lora.available()) lora.read();
-              // s.println(buf);
-              sfNow = 7;
-              commLayer = 2;
-            }
+            // if (millis() - tLastRxLora > tLoraDelay) {
+            //   tLastRxLora = millis();
+            //   if (gsTO < 8) gsTO++;
+            // }
+            // if (gsTO == 8 && sfNow != 10) {
+            //   // s.println("SF to 10");
+            //   putRadio("radio set sf sf10", 20000);
+            //   while (lora.available()) lora.read();
+            //   // s.println(buf);
+            //   sfNow = 10;
+            //   commLayer = 0;
+            // }
+            // if (gsTO == 4 && sfNow != 7) {
+            //   // s.println("SF to 7");
+            //   putRadio("radio set sf sf7", 20000);
+            //   while (lora.available()) lora.read();
+            //   // s.println(buf);
+            //   sfNow = 7;
+            //   commLayer = 2;
+            // }
+            // s.printf("%6d lora sf handle\n", millis() - t0);
+            // t0 = millis();
+
             txBufIdx = 0;
             addToTxBuff("radio tx ");
             // fill Tx buffer
@@ -443,11 +463,16 @@ void core1task(void* parameter) {
             }
             addByteToTxBuff(chk);
             addToTxBuff(" 1");
+            // s.printf("%6d lora buffer ready\n", millis() - t0);
+            // t0 = millis();
             putRadio(txBuf, 100000);  // ok
             getRadio(500000);         // radio tx ok
             getRadio(100000);         // # packet sent
             while (lora.available()) lora.read();
             putRadio("radio rx 0", 100000);  // ok
+            // s.printf("%6d lora send done\n", millis() - t0);
+            // t0 = millis();
+
             // s.printf("%s @sf %d    @missed %d\n", txBuf, sfNow, gsTO); //rádió kiíratás
             // tchk full loraTask = 56.2 ms
             break;
@@ -469,24 +494,32 @@ void core1task(void* parameter) {
               byte c = (byte)lora.read();
               delay(1);
             }
-            putRadio("sys reset", 1000000);
-            delay(5);
+            putRadio("sys factoryRESET", 1000000);
+            delay(50);
             while (lora.available()) {  // empty rx buffer
               lora.read();
               delay(1);
             }
-            putRadio("radio set sf sf10", 10000);
+            putRadio("sys reset", 1000000);
+            delay(50);
+            while (lora.available()) {  // empty rx buffer
+              lora.read();
+              delay(1);
+            }
+            // putRadio("radio set pwr 20", 100000);
+            // putRadio("radio set pa on", 100000);
+            putRadio("radio set sf sf8", 100000);
             char fc[40];
-            // sprintf(fc, "radio set freq %4d00000", freqNow);
-            s.println(fc);
+            sprintf(fc, "radio set freq %4d00000", freqNow);
+            // s.println(fc);
             putRadio(fc, 10000);
             // s.println(buf);
-            putRadio("radio get freq", 50000);
-            // s.println(buf);
-            putRadio("radio set bw 250", 10000);
-            putRadio("radio set rxbw 250", 50000);
-            putRadio("radio set cr 4/5", 10000);
-            byte b = putRadio("radio set crc off", 10000);
+            // putRadio("radio get freq", 100000);
+            // // s.println(buf);
+            putRadio("radio set bw 250", 100000);
+            putRadio("radio set rxbw 250", 100000);
+            putRadio("radio set cr 4/5", 100000);
+            byte b = putRadio("radio set crc off", 100000);
             if (b == 0) {
               // s.println("LOR NOK");
             } else {
@@ -500,7 +533,8 @@ void core1task(void* parameter) {
           {  //itt baj van....}
           }
       }
-
+      s.printf("%6d Lora ends\n", millis() - t0);
+      t0 = millis();
       while (gps.available()) {
         char c = gps.read();
         if (char(c) == '$' || gpsBufIdx > gpsBufSize - 1) {
@@ -516,7 +550,7 @@ void core1task(void* parameter) {
           gpsParse = false;
           gpsBuf[gpsBufIdx] = 0;
           String m(gpsBuf);
-          // s.println(m);
+          s.println(m);
           gpsBufIdx = 0;
           int i = 0;
           int i2 = 0;
@@ -577,6 +611,8 @@ void core1task(void* parameter) {
         }  // end of gpsParse
       }    // gps rx buffer empty
       gpsNoTO = (millis() - tLastGps > 1100) ? 0 : 1;
+      s.printf("%6d GPS ends\n", millis() - t0);
+      t0 = millis();
 
       // s.printf("Time %12.2f\tLat %9.6f\t Lon %9.6f\tAlt %5.2f\tTime %1d\tLock %1d\tDGPS %1d\n", gpsTim, lat, lon, alt, gpsTimeOK, gpsLockOK, dgpsOK);
     }  // end of loratrigger

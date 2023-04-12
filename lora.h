@@ -19,30 +19,33 @@ char getRadio(uint32_t to) {
       buf[b++] = (byte)lora.read();
       // s.printf("%#02x  ", buf[b - 1]);
       if (buf[b - 1] == '\r') {
-        // s.print("|CR|");
+        s.print("|CR|");
       } else if (buf[b - 1] != '\n') {
-        // s.write(buf[b - 1]);
+        s.write(buf[b - 1]);
       } else {
-        // s.println("|LF|");
-        // s.println("");
+        s.println("|LF|");
+        s.println("");
         break;
       }
     }
   }
   buf[b] = '\0';
-  // s.println();
-  // if (b == 0)
-  //   s.printf("%08d*** Timeout\n\n", micros() / 1000);
+  s.println();
+  if (b == 0)
+    s.printf("%08d*** Timeout\n\n", micros() / 1000);
   // else
-  //   s.printf("%08d ANS %s\n", micros() / 1000, buf);
+    s.printf("%08d ANS %s\n", micros() / 1000, buf);
   return (b);
 }
 
 char putRadio(const char *cmd, uint32_t to) {
-  lora.println(cmd);
-  // s.println(cmd);
+  uint32_t t0 = micros();
+  lora.print(cmd);
+  s.println(cmd);
+  s.print('\t');
   // s.printf("%08d PUT %s\r\n", micros() / 1000, cmd);
   char b = getRadio(to);
+  s.printf(" took %6.2fms\n", (micros() - t0) / 1000.0);
   // if (b == 0) s.println(cmd);
   return (b);
 }
