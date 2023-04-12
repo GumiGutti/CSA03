@@ -151,45 +151,6 @@ void core0task(void* parameter) {  // a.k.a. loop
   for (;;) {
     if (firstRunCore0) {
       Wire.begin(i2cSDA, i2cSCL, 400000);
-      /*
-      byte error, address;
-      int nDevices;
-      s.println("Scanning I2C");
-      s.println("IN219               0x40");
-      s.println("GY-91 modul MPU6500 0x68");
-      s.println("GY-91 modul BMP280  0x76");
-      s.println("BME280              0x77");
-      s.println("BME280 SDO pin direkt felhúzása nélkül azonos a két BME címe!");
-      s.println("");
-      nDevices = 0;
-      for (address = 1; address < 127; address++) {
-        // The i2c_scanner uses the return value of
-        // the Write.endTransmisstion to see if
-        // a device did acknowledge to the address.
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
-
-        if (error == 0) {
-          s.print("I2C device found at address 0x");
-          if (address < 16)
-            s.print("0");
-          s.print(address, HEX);
-          s.println("  !");
-
-          nDevices++;
-        } else if (error == 4) {
-          s.print("Unknown error at address 0x");
-          if (address < 16)
-            s.print("0");
-          s.println(address, HEX);
-        }
-      }
-      if (nDevices == 0)
-        s.println("No I2C devices found\n");
-      else
-        s.println("done\n");
-      //s.println("Elsőkör");
-      */
       firstRunCore0 = false;
     }
 
@@ -232,9 +193,12 @@ void core0task(void* parameter) {  // a.k.a. loop
             xSemaphoreGive(xPosy);
 
             if (debug) {
-              s.print(ax); s.print("\t");
-              s.print(ay); s.print("\t");
-              s.print(az); s.println("\t");
+              s.print(ax);
+              s.print("\t");
+              s.print(ay);
+              s.print("\t");
+              s.print(az);
+              s.println("\t");
             }
             break;
           }
@@ -634,5 +598,6 @@ void core0task(void* parameter) {  // a.k.a. loop
         }
       }
     }
+    vTaskDelay(1);
   }
 }
