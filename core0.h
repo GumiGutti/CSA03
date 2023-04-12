@@ -19,8 +19,6 @@ TaskHandle_t hCore0task;
 #include <DallasTemperature.h>
 #include <Wire.h>
 #include <MPU6500_WE.h>
-#include <I2Cdev.h>
-#include <MPU6050_6Axis_MotionApps20.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL375.h>
 #include <Adafruit_BMP280.h>
@@ -29,13 +27,7 @@ TaskHandle_t hCore0task;
 
 bool debug = 0;
 
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-#include "Wire.h"
-#endif
-
 Adafruit_INA219 ina219;
-MPU6050 mpu;
-MPU6050 accelgyro;
 Adafruit_BMP280 bmp;
 OneWire ds(ds18Pin);
 Adafruit_BME280 bme;
@@ -43,30 +35,6 @@ MPU6500_WE myMPU6500 = MPU6500_WE(MPU6500_ADDR);
 
 SPIClass hspi(HSPI);
 Adafruit_ADXL375 accel = Adafruit_ADXL375(accCS, &hspi, 12345);
-
-bool dmpReady = false;   // set true if DMP init was successful
-uint8_t mpuIntStatus;    // holds actual interrupt status byte from MPU
-uint8_t devStatus;       // return status after each device operation (0 = success, !0 = error)
-uint16_t packetSize;     // expected DMP packet size (default is 42 bytes)
-uint16_t fifoCount;      // count of all bytes currently in FIFO
-uint8_t fifoBuffer[64];  // FIFO storage buffer
-
-// Variables for the IMU
-Quaternion q;    // [w, x, y, z]         quaternion container
-VectorInt16 aa;  // [x, y, z]            accel sensor measurements
-VectorFloat gravity;
-VectorInt16 aaReal;   // [x, y, z]            gravity-free accel sensor measurements
-VectorInt16 aaWorld;  // [x, y, z]            world-frame accel sensor measurements
-float ypr[3];
-
-float disp_x = 0;
-float disp_y = 0;
-float disp_z = 0;  //imu számoláshoz elmozdulás
-
-float velo_x = 0;
-float velo_y = 0;
-float velo_z = 0;  //imu számoláshoz sebesség
-
 
 float accel_x, accel_y, accel_z;  //adxl mérések ide jönnek
 float xx, yy, zz;                 //adxl calibrated
@@ -82,11 +50,6 @@ int16_t x, y, z;  //adxl kalibrációhoz
 
 float DStemp, BMEtemp, BMPtemp;  //Méréseknek
 float BMEpress, BMPpress;
-
-volatile bool mpuInterrupt = false;
-void ICACHE_RAM_ATTR dmpDataReady() {
-  mpuInterrupt = true;
-}
 
 uint32_t tImuTrigger = 0;
 uint32_t tImuDelay = 150;
