@@ -67,8 +67,6 @@ float velo_x = 0;
 float velo_y = 0;
 float velo_z = 0;  //imu számoláshoz sebesség
 
-unsigned long deltaT = 0;  //imu integráláshoz eltelt idő
-unsigned long current = 0;
 
 float accel_x, accel_y, accel_z;  //adxl mérések ide jönnek
 float xx, yy, zz;                 //adxl calibrated
@@ -227,7 +225,7 @@ void core0task(void* parameter) {  // a.k.a. loop
 
             xSemaphoreTake(xPosy, portMAX_DELAY);
             Posy = gyx;
-            xSemaphoreGive(xQy);
+            xSemaphoreGive(xPosy);
 
             xSemaphoreTake(xPosz, portMAX_DELAY);
             Posz = gyx;
